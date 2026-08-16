@@ -1,0 +1,62 @@
+{
+  "capability_id": "open_sub_account",
+  "name": "Open a sub-account for a member",
+  "goal": "Look up the member by member number, open their profile, start the 'Open Sub-Account' flow, fill in the product type, nickname and initial deposit, submit the form, and reach the confirmation screen. Then read the confirmation reference number.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "10023",
+      "description": "The member number to open the sub-account for.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "product_type",
+      "value": "Holiday Club",
+      "description": "The sub-account product type (e.g. 'Holiday Club', 'Money Market').",
+      "sensitivity": "public"
+    },
+    {
+      "name": "nickname",
+      "value": "Winter savings",
+      "description": "A display nickname for the new sub-account.",
+      "sensitivity": "public"
+    },
+    {
+      "name": "initial_deposit",
+      "value": "25.00",
+      "description": "Initial deposit in dollars; the app requires at least $5.00.",
+      "sensitivity": "public"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_ref",
+      "description": "The confirmation reference number shown on the final screen.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist in the core system. A legitimate negative result the caller must handle."
+    },
+    {
+      "code": "validation_rejected",
+      "text": "Please correct the following",
+      "description": "The sub-account form rejected the submitted values (product/nickname/deposit validation)."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation; dismissed via its Continue button.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 20
+}

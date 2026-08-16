@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Open Sub-Account</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+{% if errors %}
+<table cellpadding="2"><tr><td>
+<font color="red"><b>Please correct the following:</b></font><br>
+{% for e in errors %}<font color="red">! {{ e }}</font><br>{% endfor %}
+</td></tr></table>
+{% endif %}
+<form action="/member/{{ m.member_no }}/subacct/create" method="post">
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Product Type:</td><td>
+<select name="prod">
+<option value="">-- select --</option>
+{% for p in products %}<option value="{{ p }}" {% if form.get('prod') == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="r2"><td>Nickname:</td><td><input type="text" name="nick" size="24" value="{{ form.get('nick','') }}"></td></tr>
+<tr class="c1"><td>Initial Deposit:</td><td><input type="text" name="dep" size="10" value="{{ form.get('dep','') }}"> <font size="1">(min $5.00)</font></td></tr>
+<tr class="r2"><td colspan="2" align="right"><input type="submit" value="Create Sub-Account"></td></tr>
+</table>
+</form>
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

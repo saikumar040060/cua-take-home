@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx" align="center">
+<font size="3" color="#8a6d1f"><b>Session Notice</b></font>
+<p>Your teller session will expire in 2 minutes due to host maintenance on MCU-CORE-02.</p>
+<p>Select Continue to extend your session and proceed.</p>
+<form action="/session/extend" method="post">
+<input type="hidden" name="next" value="{{ next_url }}">
+<input type="submit" value="Continue">
+</form>
+</div>
+{% endblock %}

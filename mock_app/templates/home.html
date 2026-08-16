@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Member Lookup</b></font>
+<form action="/member/search" method="get">
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Member No:</td><td><input type="text" name="mno" size="12"></td>
+<td><input type="submit" value="Search"></td></tr>
+</table>
+</form>
+<br>
+<font size="1" color="#666">Enter the numeric member number exactly as shown on the member card.</font>
+</div>
+{% endblock %}

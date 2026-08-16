@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Member Profile</b></font>
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Member No</td><td>{{ m.member_no }}</td></tr>
+<tr class="r2"><td>Name</td><td>{{ m.name }}</td></tr>
+<tr class="c1"><td>SSN</td><td>***-**-{{ m.ssn_last4 }}</td></tr>
+<tr class="r2"><td>DOB</td><td>{{ m.dob }}</td></tr>
+<tr class="c1"><td>Phone</td><td>{{ m.phone }}</td></tr>
+<tr class="r2"><td>Address</td><td>{{ m.address }}</td></tr>
+</table>
+<br>
+<font size="2"><b>Accounts</b></font>
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><th>Acct No</th><th>Product</th><th>Balance</th><th>Opened</th></tr>
+{% for a in m.accounts %}
+<tr class="{{ loop.cycle('r2','c1') }}"><td>{{ a.number }}</td><td>{{ a.product }}</td><td>{{ a.balance }}</td><td>{{ a.opened }}</td></tr>
+{% endfor %}
+</table>
+<br>
+<table cellpadding="4"><tr>
+<td class="c1"><a href="/member/{{ m.member_no }}/subacct/new">Open Sub-Account</a></td>
+<td class="c1"><a href="/">New Lookup</a></td>
+</tr></table>
+</div>
+{% endblock %}

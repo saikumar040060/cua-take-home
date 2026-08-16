@@ -1,0 +1,9 @@
+{
+  "allowed_origins": ["http://127.0.0.1:5000", "http://localhost:5000"],
+  "allowed_path_prefixes": ["/"],
+  "blocked_path_prefixes": ["/admin"],
+  "allowed_actions": ["navigate", "click", "fill", "select", "press", "read"],
+  "risky_name_patterns": [
+    "create", "submit", "delete", "remove", "transfer", "post", "approve", "close account"
+  ]
+}
