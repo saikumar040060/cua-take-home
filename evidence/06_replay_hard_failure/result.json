@@ -1,0 +1,38 @@
+{
+  "run_id": "replay-20260816T051251Z-55fe2d",
+  "capability_id": "open_sub_account",
+  "capability_version": 1,
+  "status": "hard_failure",
+  "started_at": "2026-08-16T05:12:57.381866Z",
+  "finished_at": "2026-08-16T05:12:57.381867Z",
+  "outputs": {},
+  "business_outcome": null,
+  "failure": {
+    "step_id": "s02_click_search",
+    "step_description": "Click the Search button to look up member {member_id}",
+    "action": "click",
+    "expected": "after click, the app shows Member Profile at the expected URL",
+    "observed": "url=http://127.0.0.1:5000/member/1***6 title='MCU-CORE-02 ERROR' first_visible_line='*** HOST COMMUNICATION FAILURE ***'",
+    "screenshot_path": "runs/replay-20260816T051251Z-55fe2d/screenshots/002_failure_s02_click_search.png",
+    "dom_snapshot_path": "runs/replay-20260816T051251Z-55fe2d/dom/002_failure_s02_click_search.html"
+  },
+  "recoveries": [],
+  "steps": [
+    {
+      "step_id": "s01_fill_member_no",
+      "status": "ok",
+      "locator_used": "css:input[name=\"mno\"]",
+      "locator_rank": 0,
+      "duration_ms": 61
+    },
+    {
+      "step_id": "s02_click_search",
+      "status": "failed",
+      "locator_used": "role:button name='Search'",
+      "locator_rank": 0,
+      "duration_ms": 5256
+    }
+  ],
+  "events_log_path": "runs/replay-20260816T051251Z-55fe2d/events.jsonl",
+  "intervention_id": null
+}

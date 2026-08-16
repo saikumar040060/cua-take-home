@@ -1,0 +1,74 @@
+{
+  "run_id": "replay-20260816T051323Z-3ce078",
+  "capability_id": "open_sub_account",
+  "capability_version": 1,
+  "status": "success",
+  "started_at": "2026-08-16T05:13:24.243062Z",
+  "finished_at": "2026-08-16T05:13:24.837555Z",
+  "outputs": {
+    "confirmation_ref": "SA-2026-0001"
+  },
+  "business_outcome": null,
+  "failure": null,
+  "recoveries": [],
+  "steps": [
+    {
+      "step_id": "s01_fill_member_no",
+      "status": "ok",
+      "locator_used": "css:input[name=\"mno\"]",
+      "locator_rank": 0,
+      "duration_ms": 63
+    },
+    {
+      "step_id": "s02_click_search",
+      "status": "ok",
+      "locator_used": "role:button name='Search'",
+      "locator_rank": 0,
+      "duration_ms": 104
+    },
+    {
+      "step_id": "s03_click_open_sub_account",
+      "status": "ok",
+      "locator_used": "role:link name='Open Sub-Account'",
+      "locator_rank": 0,
+      "duration_ms": 105
+    },
+    {
+      "step_id": "s04_select_product_type",
+      "status": "ok",
+      "locator_used": "css:select[name=\"prod\"]",
+      "locator_rank": 0,
+      "duration_ms": 63
+    },
+    {
+      "step_id": "s05_fill_nickname",
+      "status": "ok",
+      "locator_used": "css:input[name=\"nick\"]",
+      "locator_rank": 0,
+      "duration_ms": 20
+    },
+    {
+      "step_id": "s06_fill_initial_deposit",
+      "status": "ok",
+      "locator_used": "css:input[name=\"dep\"]",
+      "locator_rank": 0,
+      "duration_ms": 19
+    },
+    {
+      "step_id": "s07_click_create_sub_account",
+      "status": "ok",
+      "locator_used": "role:button name='Create Sub-Account'",
+      "locator_rank": 0,
+      "duration_ms": 157
+    },
+    {
+      "step_id": "s08_read_confirmation_ref",
+      "status": "ok",
+      "locator_used": "css:tr:has(td:text-is(\"Confirmation Ref\")) > td:nth-of-type(2)",
+      "locator_rank": 0,
+      "duration_ms": 15
+    }
+  ],
+  "events_log_path": "runs/replay-20260816T051323Z-3ce078/events.jsonl",
+  "intervention_id": "iv-replay-20260816T051323Z-3ce078-risky_action_confirmation"
+}

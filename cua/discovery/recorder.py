@@ -124,10 +124,24 @@ def build_capability(
     steps: list[Step] = []
     outputs: list[OutputField] = []
 
+    # Step inclusion rule: an action is recorded if it truly executed AND
+    # demonstrably advanced the flow. For fill/select/read, execution itself
+    # verifies (read-back / extraction). For click/navigate we accept either
+    # the model's expectation holding OR an observed URL transition — a
+    # model can phrase its expectation slightly wrong ("Open New
+    # Sub-Account" vs the page's "Open Sub-Account") while the action was
+    # exactly right; dropping such a step would record a broken flow. A
+    # click that neither met its expectation nor changed the URL is treated
+    # as a no-op detour and excluded.
+    def _advanced(a: ExecutedAction) -> bool:
+        if a.tool in ("fill", "select", "read"):
+            return a.verified
+        return a.verified or a.url_after != a.url_before
+
     kept = [
         a
         for a in recording.actions
-        if a.verified and not a.was_interstitial_dismissal
+        if _advanced(a) and not a.was_interstitial_dismissal
     ]
 
     for i, action in enumerate(kept, start=1):
@@ -138,7 +152,15 @@ def build_capability(
         label = action.element.name if action.element else action.url_after
         step_id = f"s{i:02d}_{action.tool}_{_slug(label)}"
 
-        checkpoint_text = _strip_run_specific(action.success_text, spec)
+        # A checkpoint text is recorded only if it (a) contains no
+        # run-specific value and (b) actually held at discovery time — an
+        # expectation the model got wrong must not become a permanent
+        # assertion that fails every replay.
+        checkpoint_text = (
+            _strip_run_specific(action.success_text, spec)
+            if action.verified
+            else None
+        )
         if action_type in (ActionType.NAVIGATE, ActionType.CLICK):
             checkpoint = StateProbe(
                 url_pattern=parameterize_url_pattern(action.url_after, spec),
@@ -165,7 +187,12 @@ def build_capability(
 
         step = Step(
             id=step_id,
-            description=action.reason or f"{action.tool} {label}",
+            # Descriptions come from the model's stated reasoning, which may
+            # mention concrete run values — parameterize them like any other
+            # recorded text so no run data survives into the artifact.
+            description=parameterize_text(
+                action.reason or f"{action.tool} {label}", spec
+            ),
             action=action_type,
             target=target,
             value_template=(

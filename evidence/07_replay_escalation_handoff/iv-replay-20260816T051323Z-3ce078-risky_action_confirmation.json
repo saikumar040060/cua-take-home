@@ -1,0 +1,29 @@
+{
+  "id": "iv-replay-20260816T051323Z-3ce078-risky_action_confirmation",
+  "run_id": "replay-20260816T051323Z-3ce078",
+  "capability_or_goal": "open_sub_account",
+  "reason": "risky_action_confirmation",
+  "message": "step 's07_click_create_sub_account' is classified RISKY (Submit the form by clicking the 'Create Sub-Account' button) and the caller did not pre-confirm (confirm_risky=false). A human must approve or deny.",
+  "current_step": "s07_click_create_sub_account",
+  "current_url": "http://127.0.0.1:5000/member/1***7/subacct/new",
+  "screenshot_path": "runs/replay-20260816T051323Z-3ce078/screenshots/007_intervention_risky_action_confirmation.png",
+  "log_excerpt": [
+    "{\"seq\": 1, \"ts\": \"2026-08-16T05:13:24.243095+00:00\", \"run_id\": \"replay-20260816T051323Z-3ce078\", \"event\": \"run_started\", \"actor\": \"automation\", \"phase\": \"replay\", \"capability\": \"open_sub_account\", \"version\": 1, \"params\": {\"member_id\": \"1***7\", \"product_type\": \"Vacation Club\", \"nickname\": \"Handoff demo\", \"initial_deposit\": \"30.00\"}}",
+    "{\"seq\": 2, \"ts\": \"2026-08-16T05:13:24.351064+00:00\", \"run_id\": \"replay-20260816T051323Z-3ce078\", \"event\": \"step_ok\", \"actor\": \"automation\", \"step\": \"s01_fill_member_no\", \"action\": \"fill\", \"locator\": \"css:input[name=\\\"mno\\\"]\", \"locator_rank\": 0, \"duration_ms\": 63}",
+    "{\"seq\": 3, \"ts\": \"2026-08-16T05:13:24.455392+00:00\", \"run_id\": \"replay-20260816T051323Z-3ce078\", \"event\": \"step_ok\", \"actor\": \"automation\", \"step\": \"s02_click_search\", \"action\": \"click\", \"locator\": \"role:button name='Search'\", \"locator_rank\": 0, \"duration_ms\": 104}",
+    "{\"seq\": 4, \"ts\": \"2026-08-16T05:13:24.560736+00:00\", \"run_id\": \"replay-20260816T051323Z-3ce078\", \"event\": \"step_ok\", \"actor\": \"automation\", \"step\": \"s03_click_open_sub_account\", \"action\": \"click\", \"locator\": \"role:link name='Open Sub-Account'\", \"locator_rank\": 0, \"duration_ms\": 105}",
+    "{\"seq\": 5, \"ts\": \"2026-08-16T05:13:24.624228+00:00\", \"run_id\": \"replay-20260816T051323Z-3ce078\", \"event\": \"step_ok\", \"actor\": \"automation\", \"step\": \"s04_select_product_type\", \"action\": \"select\", \"locator\": \"css:select[name=\\\"prod\\\"]\", \"locator_rank\": 0, \"duration_ms\": 63}",
+    "{\"seq\": 6, \"ts\": \"2026-08-16T05:13:24.644557+00:00\", \"run_id\": \"replay-20260816T051323Z-3ce078\", \"event\": \"step_ok\", \"actor\": \"automation\", \"step\": \"s05_fill_nickname\", \"action\": \"fill\", \"locator\": \"css:input[name=\\\"nick\\\"]\", \"locator_rank\": 0, \"duration_ms\": 20}",
+    "{\"seq\": 7, \"ts\": \"2026-08-16T05:13:24.664437+00:00\", \"run_id\": \"replay-20260816T051323Z-3ce078\", \"event\": \"step_ok\", \"actor\": \"automation\", \"step\": \"s06_fill_initial_deposit\", \"action\": \"fill\", \"locator\": \"css:input[name=\\\"dep\\\"]\", \"locator_rank\": 0, \"duration_ms\": 19}"
+  ],
+  "created_at": "2026-08-16T05:13:24.717284Z",
+  "resolution": "approved",
+  "human_actions": [
+    {
+      "ts": "2026-08-16T05:13:24.718069Z",
+      "command": "approve",
+      "detail": ""
+    }
+  ],
+  "resolved_at": "2026-08-16T05:13:24.718161Z"
+}

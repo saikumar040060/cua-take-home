@@ -1,0 +1,69 @@
+{
+  "run_id": "replay-20260816T051136Z-4ee243",
+  "capability_id": "open_sub_account",
+  "capability_version": 1,
+  "status": "business_outcome",
+  "started_at": "2026-08-16T05:11:42.938361Z",
+  "finished_at": "2026-08-16T05:11:42.938362Z",
+  "outputs": {},
+  "business_outcome": {
+    "code": "validation_rejected",
+    "description": "The sub-account form rejected the submitted values (product/nickname/deposit validation).",
+    "detected_at_step_id": "s07_click_create_sub_account"
+  },
+  "failure": null,
+  "recoveries": [],
+  "steps": [
+    {
+      "step_id": "s01_fill_member_no",
+      "status": "ok",
+      "locator_used": "css:input[name=\"mno\"]",
+      "locator_rank": 0,
+      "duration_ms": 58
+    },
+    {
+      "step_id": "s02_click_search",
+      "status": "ok",
+      "locator_used": "role:button name='Search'",
+      "locator_rank": 0,
+      "duration_ms": 100
+    },
+    {
+      "step_id": "s03_click_open_sub_account",
+      "status": "ok",
+      "locator_used": "role:link name='Open Sub-Account'",
+      "locator_rank": 0,
+      "duration_ms": 92
+    },
+    {
+      "step_id": "s04_select_product_type",
+      "status": "ok",
+      "locator_used": "css:select[name=\"prod\"]",
+      "locator_rank": 0,
+      "duration_ms": 54
+    },
+    {
+      "step_id": "s05_fill_nickname",
+      "status": "ok",
+      "locator_used": "css:input[name=\"nick\"]",
+      "locator_rank": 0,
+      "duration_ms": 18
+    },
+    {
+      "step_id": "s06_fill_initial_deposit",
+      "status": "ok",
+      "locator_used": "css:input[name=\"dep\"]",
+      "locator_rank": 0,
+      "duration_ms": 17
+    },
+    {
+      "step_id": "s07_click_create_sub_account",
+      "status": "business_outcome",
+      "locator_used": "role:button name='Create Sub-Account'",
+      "locator_rank": 0,
+      "duration_ms": 5132
+    }
+  ],
+  "events_log_path": "runs/replay-20260816T051136Z-4ee243/events.jsonl",
+  "intervention_id": null
+}

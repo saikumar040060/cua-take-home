@@ -151,7 +151,10 @@ class AnthropicDecider:
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             tools=TOOLS,
-            tool_choice={"type": "any"},  # a structured action, every turn
+            # Exactly one structured action per turn: free text is never
+            # parsed, and parallel tool calls are disabled because each
+            # action changes the page state the next decision depends on.
+            tool_choice={"type": "any", "disable_parallel_tool_use": True},
             messages=messages,
         )
         text = ""

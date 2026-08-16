@@ -1,0 +1,456 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "open_sub_account",
+  "version": 1,
+  "name": "Open a sub-account for a member",
+  "description": "Look up the member by member number, open their profile, start the 'Open Sub-Account' flow, fill in the product type, nickname and initial deposit, submit the form, and reach the confirmation screen. Then read the confirmation reference number.\n\nReturns: confirmation_ref — The confirmation reference number shown on the final screen.. Possible business outcomes: member_not_found, validation_rejected.",
+  "provenance": {
+    "goal": "Look up the member by member number, open their profile, start the 'Open Sub-Account' flow, fill in the product type, nickname and initial deposit, submit the form, and reach the confirmation screen. Then read the confirmation reference number.",
+    "model": "claude-sonnet-4-5",
+    "run_id": "discovery-20260816T051046Z-650e95",
+    "discovered_at": "2026-08-16T05:11:06.371955Z"
+  },
+  "entry_url_template": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "kind": "string",
+      "description": "The member number to open the sub-account for.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "product_type",
+      "kind": "string",
+      "description": "The sub-account product type (e.g. 'Holiday Club', 'Money Market').",
+      "required": true,
+      "example": "Holiday Club",
+      "sensitivity": "public"
+    },
+    {
+      "name": "nickname",
+      "kind": "string",
+      "description": "A display nickname for the new sub-account.",
+      "required": true,
+      "example": "Winter savings",
+      "sensitivity": "public"
+    },
+    {
+      "name": "initial_deposit",
+      "kind": "string",
+      "description": "Initial deposit in dollars; the app requires at least $5.00.",
+      "required": true,
+      "example": "25.00",
+      "sensitivity": "public"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_ref",
+      "kind": "string",
+      "description": "The confirmation reference number shown on the final screen.",
+      "source_step_id": "s08_read_confirmation_ref",
+      "sensitivity": "identifier"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s01_fill_member_no",
+      "description": "Enter the member number {member_id} to look up the member",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Member No\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"mno\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{member_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Member No\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"mno\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s02_click_search",
+      "description": "Click the Search button to look up member {member_id}",
+      "action": "click",
+      "target": {
+        "description": "the button \"Search\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Search",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(3) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+",
+        "text": "Member Profile",
+        "target": null,
+        "description": "after click, the app shows Member Profile at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s03_click_open_sub_account",
+      "description": "Click 'Open Sub-Account' to start the sub-account creation flow",
+      "action": "click",
+      "target": {
+        "description": "the link \"Open Sub-Account\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Open Sub-Account",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Open Sub-Account",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table:nth-of-type(3) > tbody > tr > td:nth-of-type(1) > a",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/subacct/new",
+        "text": "Open Sub-Account",
+        "target": null,
+        "description": "after click, the app shows Open Sub-Account at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s04_select_product_type",
+      "description": "Select '{product_type}' as the product type",
+      "action": "select",
+      "target": {
+        "description": "the combobox \"Product Type\" (select)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "select[name=\"prod\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{product_type}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the combobox \"Product Type\" (select)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "select[name=\"prod\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "description": "the select target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s05_fill_nickname",
+      "description": "Fill in the nickname field with '{nickname}'",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Nickname\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"nick\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{nickname}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Nickname\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"nick\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s06_fill_initial_deposit",
+      "description": "Fill in the initial deposit field with {initial_deposit}",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Initial Deposit\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"dep\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{initial_deposit}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Initial Deposit\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"dep\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s07_click_create_sub_account",
+      "description": "Submit the form by clicking the 'Create Sub-Account' button",
+      "action": "click",
+      "target": {
+        "description": "the button \"Create Sub-Account\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Create Sub-Account",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(4) > td > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "risky",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/subacct/confirm/[^/]+",
+        "text": "Confirmation",
+        "target": null,
+        "description": "after click, the app shows Confirmation at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s08_read_confirmation_ref",
+      "description": "Read the confirmation reference number from the confirmation screen",
+      "action": "read",
+      "target": {
+        "description": "the value cell next to \"Confirmation Ref\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"Confirmation Ref\")) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Last resort: structural path (drift canary)."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "confirmation_ref",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the value cell next to \"Confirmation Ref\"",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "tr:has(td:text-is(\"Confirmation Ref\")) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Last resort: structural path (drift canary)."
+            }
+          ]
+        },
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "The member number does not exist in the core system. A legitimate negative result the caller must handle.",
+      "detector": {
+        "url_pattern": null,
+        "text": "No matching member record",
+        "target": null,
+        "description": "page shows: 'No matching member record'"
+      }
+    },
+    {
+      "code": "validation_rejected",
+      "description": "The sub-account form rejected the submitted values (product/nickname/deposit validation).",
+      "detector": {
+        "url_pattern": null,
+        "text": "Please correct the following",
+        "target": null,
+        "description": "page shows: 'Please correct the following'"
+      }
+    }
+  ],
+  "recovery_rules": [
+    {
+      "id": "session_expiry_notice",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation; dismissed via its Continue button.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Your teller session will expire",
+        "target": null,
+        "description": "page shows: 'Your teller session will expire'"
+      },
+      "action_kind": "click",
+      "action_target": {
+        "description": "the button \"Continue\" that dismisses the interstitial",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Continue",
+            "note": "Interstitial dismiss control by role + accessible name."
+          }
+        ]
+      },
+      "max_applications": 2
+    }
+  ]
+}
