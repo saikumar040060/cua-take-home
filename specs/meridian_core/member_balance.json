@@ -4,20 +4,68 @@
   "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open their record. The record shows a table of the member's shares. Read the balance of the FIRST share row shown in the table (i.e. the value cell for that specific row's balance -- not a column header, and not the whole table), and separately read that same first share's status (e.g. whether it is OPEN or on HOLD). These are two separate single-cell reads, each naming one declared output.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
-    {"name": "operator_id", "value": "teller1", "description": "Operator login ID.", "sensitivity": "identifier"},
-    {"name": "password", "value": "password", "description": "Operator password.", "sensitivity": "secret"},
-    {"name": "member_id", "value": "100987", "description": "Member number to check.", "sensitivity": "identifier"}
+    {
+      "name": "operator_id",
+      "value": "teller1",
+      "description": "Operator login ID.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "password",
+      "value": "password",
+      "description": "Operator password.",
+      "sensitivity": "secret"
+    },
+    {
+      "name": "member_id",
+      "value": "100987",
+      "description": "Member number to check.",
+      "sensitivity": "identifier"
+    }
   ],
   "outputs": [
-    {"name": "first_share_balance", "description": "Balance of the first share row shown on the member record."},
-    {"name": "first_share_status", "description": "Status (e.g. OPEN or HOLD) of the first share row shown on the member record."}
+    {
+      "name": "first_share_balance",
+      "description": "Balance of the first share row shown on the member record."
+    },
+    {
+      "name": "first_share_status",
+      "description": "Status (e.g. OPEN or HOLD) of the first share row shown on the member record."
+    }
   ],
   "business_outcomes": [
-    {"code": "member_not_found", "text": "not found", "http_status": 404, "description": "No member record matches the given member number."}
+    {
+      "code": "member_not_found",
+      "text": "not found",
+      "http_status": 404,
+      "description": "No member record matches the given member number."
+    },
+    {
+      "code": "invalid_login",
+      "text": "Invalid",
+      "http_status": 400,
+      "description": "Bad operator ID or password -- a legitimate rejection, not a system failure."
+    }
   ],
   "known_interstitials": [
-    {"id": "session_expiry_notice", "text": "session", "http_status": 440, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Session-expiry notice interrupting navigation.", "max_applications": 2},
-    {"id": "maintenance_notice", "text": "maintenance", "http_status": 503, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Unexpected maintenance interstitial.", "max_applications": 1}
+    {
+      "id": "session_expiry_notice",
+      "text": "session",
+      "http_status": 440,
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Session-expiry notice interrupting navigation.",
+      "max_applications": 2
+    },
+    {
+      "id": "maintenance_notice",
+      "text": "maintenance",
+      "http_status": 503,
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Unexpected maintenance interstitial.",
+      "max_applications": 1
+    }
   ],
   "max_steps": 14
 }

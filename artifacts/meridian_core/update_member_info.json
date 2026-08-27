@@ -3,7 +3,7 @@
   "capability_id": "meridian_update_member_info",
   "version": 1,
   "name": "Update a member's contact information",
-  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open the Update Member Information form. Fill in the email, phone, and mailing address fields as given. Then explicitly click whatever button submits/saves this form (e.g. 'Save' or 'Update' -- it is a button, not a navigation link like 'Return to Member Record', which does not save anything). The page will show a confirmation banner ('CHANGES SAVED') but that banner is plain page text with no element reference, so it cannot be read as a value -- do not try. Instead, from the confirmation screen click 'Return to Member Record' to go back to the member's record, and read back the email address field now shown on that record as a single labeled value (the same way a specific share's balance was read as a single cell in the member-balance capability) -- this confirms the update actually took effect.\n\nReturns: confirmed_email — Email address read back from the member's record after saving, confirming the update took effect.. Possible business outcomes: member_not_found, invalid_contact_info.",
+  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open the Update Member Information form. Fill in the email, phone, and mailing address fields as given. Then explicitly click whatever button submits/saves this form (e.g. 'Save' or 'Update' -- it is a button, not a navigation link like 'Return to Member Record', which does not save anything). The page will show a confirmation banner ('CHANGES SAVED') but that banner is plain page text with no element reference, so it cannot be read as a value -- do not try. Instead, from the confirmation screen click 'Return to Member Record' to go back to the member's record, and read back the email address field now shown on that record as a single labeled value (the same way a specific share's balance was read as a single cell in the member-balance capability) -- this confirms the update actually took effect.\n\nReturns: confirmed_email \u2014 Email address read back from the member's record after saving, confirming the update took effect.. Possible business outcomes: member_not_found, invalid_contact_info.",
   "provenance": {
     "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open the Update Member Information form. Fill in the email, phone, and mailing address fields as given. Then explicitly click whatever button submits/saves this form (e.g. 'Save' or 'Update' -- it is a button, not a navigation link like 'Return to Member Record', which does not save anything). The page will show a confirmation banner ('CHANGES SAVED') but that banner is plain page text with no element reference, so it cannot be read as a value -- do not try. Instead, from the confirmation screen click 'Return to Member Record' to go back to the member's record, and read back the email address field now shown on that record as a single labeled value (the same way a specific share's balance was read as a single cell in the member-balance capability) -- this confirms the update actually took effect.",
     "model": "claude-sonnet-4-5",
@@ -88,7 +88,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -112,7 +112,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -138,7 +138,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -162,7 +162,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -188,7 +188,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -228,7 +228,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -262,7 +262,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -286,7 +286,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -312,7 +312,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -352,7 +352,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -392,7 +392,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > a:nth-of-type(3)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -426,7 +426,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -450,7 +450,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -476,7 +476,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -500,7 +500,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -526,7 +526,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -550,7 +550,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -576,7 +576,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -616,7 +616,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > a:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -698,13 +698,24 @@
     },
     {
       "code": "invalid_contact_info",
-      "description": "The email or phone submitted failed validation — a legitimate rejection.",
+      "description": "The email or phone submitted failed validation \u2014 a legitimate rejection.",
       "detector": {
         "url_pattern": null,
         "text": "correct the following",
         "target": null,
         "http_status": 400,
         "description": "page shows: 'correct the following' (HTTP 400)"
+      }
+    },
+    {
+      "code": "invalid_login",
+      "description": "Bad operator ID or password -- a legitimate rejection, not a system failure.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Invalid",
+        "target": null,
+        "http_status": 400,
+        "description": "page shows: 'Invalid' (HTTP 400)"
       }
     }
   ],

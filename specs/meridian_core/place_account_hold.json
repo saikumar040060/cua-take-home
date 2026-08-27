@@ -4,22 +4,77 @@
   "goal": "Sign on to MERIDIAN CORE as the given operator (a supervisor -- this is a supervisor-gated, restricted action requiring override). Look up the member by member number and open their record. The 'share' input below is only a placeholder -- the exact share IDs for this member are not known in advance, so ignore its literal text for selection. Instead, read the member's shares list, confirm this member has no share already on HOLD (choose a different member if they do), and select the FIRST share whose status is OPEN, using its exact share ID as shown in the hold-target dropdown option -- not a guessed product name. Start placing a hold on that share. The 'reason_code' and 'notes' inputs describe the intent but are not guaranteed to match exact on-screen text: from the actual reason-code dropdown, pick whichever real option most closely matches 'routine review' (or the closest available reason code shown), and enter the given notes text into the free-text notes field if one is present. Go through the review step, provide the supervisor override where prompted, read the hidden per-transaction security token off the page, then post it. This action is risky and irreversible once posted. Read back the confirmation reference after posting.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
-    {"name": "operator_id", "value": "super1", "description": "Supervisor login ID (required for this restricted action).", "sensitivity": "identifier"},
-    {"name": "password", "value": "password", "description": "Operator password.", "sensitivity": "secret"},
-    {"name": "member_id", "value": "103001", "description": "Member number. Chosen because it is not the seed member already known to have a share on HOLD (100987); if 103001 turns out to have a share on HOLD too, abort and rerun with a different seed member (100234, 101555, or 102777).", "sensitivity": "identifier"},
-    {"name": "share", "value": "TBD -- read the first OPEN share's real ID off the live page", "description": "Placeholder only. Select the first OPEN (not HOLD) share's real share ID as shown in the dropdown, not this placeholder text."},
-    {"name": "reason_code", "value": "Routine review", "description": "Intent for the reason code; pick the closest matching real option from the live dropdown, not necessarily this exact string."},
-    {"name": "notes", "value": "Placed for routine review", "description": "Free-text notes for the hold."}
+    {
+      "name": "operator_id",
+      "value": "super1",
+      "description": "Supervisor login ID (required for this restricted action).",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "password",
+      "value": "password",
+      "description": "Operator password.",
+      "sensitivity": "secret"
+    },
+    {
+      "name": "member_id",
+      "value": "103001",
+      "description": "Member number. Chosen because it is not the seed member already known to have a share on HOLD (100987); if 103001 turns out to have a share on HOLD too, abort and rerun with a different seed member (100234, 101555, or 102777).",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "share",
+      "value": "TBD -- read the first OPEN share's real ID off the live page",
+      "description": "Placeholder only. Select the first OPEN (not HOLD) share's real share ID as shown in the dropdown, not this placeholder text."
+    },
+    {
+      "name": "reason_code",
+      "value": "Routine review",
+      "description": "Intent for the reason code; pick the closest matching real option from the live dropdown, not necessarily this exact string."
+    },
+    {
+      "name": "notes",
+      "value": "Placed for routine review",
+      "description": "Free-text notes for the hold."
+    }
   ],
   "outputs": [
-    {"name": "confirmation_ref", "description": "Confirmation reference shown after posting.", "sensitivity": "identifier"}
+    {
+      "name": "confirmation_ref",
+      "description": "Confirmation reference shown after posting.",
+      "sensitivity": "identifier"
+    }
   ],
   "business_outcomes": [
-    {"code": "member_not_found", "text": "not found", "http_status": 404, "description": "No member record matches the given member number."},
-    {"code": "permission_denied", "text": "override", "http_status": 403, "description": "A non-supervisor operator attempted this action; supervisor override is required — a legitimate rejection, not a system failure."}
+    {
+      "code": "member_not_found",
+      "text": "not found",
+      "http_status": 404,
+      "description": "No member record matches the given member number."
+    },
+    {
+      "code": "permission_denied",
+      "text": "override",
+      "http_status": 403,
+      "description": "A non-supervisor operator attempted this action; supervisor override is required \u2014 a legitimate rejection, not a system failure."
+    },
+    {
+      "code": "invalid_login",
+      "text": "Invalid",
+      "http_status": 400,
+      "description": "Bad operator ID or password -- a legitimate rejection, not a system failure."
+    }
   ],
   "known_interstitials": [
-    {"id": "session_expiry_notice", "text": "session", "http_status": 440, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Session-expiry notice interrupting navigation.", "max_applications": 2}
+    {
+      "id": "session_expiry_notice",
+      "text": "session",
+      "http_status": 440,
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Session-expiry notice interrupting navigation.",
+      "max_applications": 2
+    }
   ],
   "max_steps": 20
 }

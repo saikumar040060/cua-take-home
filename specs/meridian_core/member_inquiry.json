@@ -4,19 +4,60 @@
   "goal": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name and status as shown on the record screen.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
-    {"name": "operator_id", "value": "teller1", "description": "Operator login ID.", "sensitivity": "identifier"},
-    {"name": "password", "value": "password", "description": "Operator password.", "sensitivity": "secret"},
-    {"name": "member_id", "value": "100234", "description": "Member number to search for.", "sensitivity": "identifier"}
+    {
+      "name": "operator_id",
+      "value": "teller1",
+      "description": "Operator login ID.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "password",
+      "value": "password",
+      "description": "Operator password.",
+      "sensitivity": "secret"
+    },
+    {
+      "name": "member_id",
+      "value": "100234",
+      "description": "Member number to search for.",
+      "sensitivity": "identifier"
+    }
   ],
   "outputs": [
-    {"name": "member_name", "description": "Full name shown on the member record.", "sensitivity": "identifier"},
-    {"name": "member_status", "description": "Status shown on the member record (e.g. active)."}
+    {
+      "name": "member_name",
+      "description": "Full name shown on the member record.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "member_status",
+      "description": "Status shown on the member record (e.g. active)."
+    }
   ],
   "business_outcomes": [
-    {"code": "member_not_found", "text": "not found", "http_status": 404, "description": "No member record matches the given member number — a legitimate negative result."}
+    {
+      "code": "member_not_found",
+      "text": "not found",
+      "http_status": 404,
+      "description": "No member record matches the given member number \u2014 a legitimate negative result."
+    },
+    {
+      "code": "invalid_login",
+      "text": "Invalid",
+      "http_status": 400,
+      "description": "Bad operator ID or password -- a legitimate rejection, not a system failure."
+    }
   ],
   "known_interstitials": [
-    {"id": "session_expiry_notice", "text": "session", "http_status": 440, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Session-expiry notice interrupting navigation.", "max_applications": 2}
+    {
+      "id": "session_expiry_notice",
+      "text": "session",
+      "http_status": 440,
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Session-expiry notice interrupting navigation.",
+      "max_applications": 2
+    }
   ],
   "max_steps": 14
 }

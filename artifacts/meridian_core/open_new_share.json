@@ -3,7 +3,7 @@
   "capability_id": "meridian_open_new_share",
   "version": 1,
   "name": "Open a new share for a member",
-  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start opening a new share for them. The 'share_type' input below is only a placeholder -- the exact share type options are not known in advance, so ignore its literal text. Instead, open the share-type dropdown, read the real options it offers, and select the FIRST one listed, using its exact option text -- not a guessed product name. Enter the given initial deposit amount; if the form rejects it as below a minimum, that is a legitimate validation_rejected business outcome, not a failure. Go through the review step, read the hidden per-transaction security token off the page, then post it. Read back the confirmation reference after posting.\n\nReturns: confirmation_ref — Confirmation reference shown after posting.. Possible business outcomes: member_not_found, validation_rejected.",
+  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start opening a new share for them. The 'share_type' input below is only a placeholder -- the exact share type options are not known in advance, so ignore its literal text. Instead, open the share-type dropdown, read the real options it offers, and select the FIRST one listed, using its exact option text -- not a guessed product name. Enter the given initial deposit amount; if the form rejects it as below a minimum, that is a legitimate validation_rejected business outcome, not a failure. Go through the review step, read the hidden per-transaction security token off the page, then post it. Read back the confirmation reference after posting.\n\nReturns: confirmation_ref \u2014 Confirmation reference shown after posting.. Possible business outcomes: member_not_found, validation_rejected.",
   "provenance": {
     "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start opening a new share for them. The 'share_type' input below is only a placeholder -- the exact share type options are not known in advance, so ignore its literal text. Instead, open the share-type dropdown, read the real options it offers, and select the FIRST one listed, using its exact option text -- not a guessed product name. Enter the given initial deposit amount; if the form rejects it as below a minimum, that is a legitimate validation_rejected business outcome, not a failure. Go through the review step, read the hidden per-transaction security token off the page, then post it. Read back the confirmation reference after posting.",
     "model": "claude-sonnet-4-5",
@@ -80,7 +80,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -104,7 +104,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -130,7 +130,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -154,7 +154,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -180,7 +180,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -220,7 +220,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -254,7 +254,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -278,7 +278,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -304,7 +304,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -344,7 +344,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -384,7 +384,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > a:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -418,7 +418,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -452,7 +452,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -476,7 +476,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -502,7 +502,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -526,7 +526,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -552,7 +552,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -586,7 +586,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > input:nth-of-type(4)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -675,6 +675,17 @@
         "target": null,
         "http_status": 400,
         "description": "page shows: 'correct the following' (HTTP 400)"
+      }
+    },
+    {
+      "code": "invalid_login",
+      "description": "Bad operator ID or password -- a legitimate rejection, not a system failure.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Invalid",
+        "target": null,
+        "http_status": 400,
+        "description": "page shows: 'Invalid' (HTTP 400)"
       }
     }
   ],

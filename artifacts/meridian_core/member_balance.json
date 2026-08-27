@@ -3,7 +3,7 @@
   "capability_id": "meridian_member_balance",
   "version": 1,
   "name": "Check a member's share balances",
-  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open their record. The record shows a table of the member's shares. Read the balance of the FIRST share row shown in the table (i.e. the value cell for that specific row's balance -- not a column header, and not the whole table), and separately read that same first share's status (e.g. whether it is OPEN or on HOLD). These are two separate single-cell reads, each naming one declared output.\n\nReturns: first_share_balance — Balance of the first share row shown on the member record., first_share_status — Status (e.g. OPEN or HOLD) of the first share row shown on the member record.. Possible business outcomes: member_not_found.",
+  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open their record. The record shows a table of the member's shares. Read the balance of the FIRST share row shown in the table (i.e. the value cell for that specific row's balance -- not a column header, and not the whole table), and separately read that same first share's status (e.g. whether it is OPEN or on HOLD). These are two separate single-cell reads, each naming one declared output.\n\nReturns: first_share_balance \u2014 Balance of the first share row shown on the member record., first_share_status \u2014 Status (e.g. OPEN or HOLD) of the first share row shown on the member record.. Possible business outcomes: member_not_found.",
   "provenance": {
     "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open their record. The record shows a table of the member's shares. Read the balance of the FIRST share row shown in the table (i.e. the value cell for that specific row's balance -- not a column header, and not the whole table), and separately read that same first share's status (e.g. whether it is OPEN or on HOLD). These are two separate single-cell reads, each naming one declared output.",
     "model": "claude-sonnet-4-5",
@@ -71,7 +71,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -95,7 +95,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -121,7 +121,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -145,7 +145,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -171,7 +171,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -211,7 +211,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -245,7 +245,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -269,7 +269,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -295,7 +295,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -335,7 +335,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -463,6 +463,17 @@
         "target": null,
         "http_status": 404,
         "description": "page shows: 'not found' (HTTP 404)"
+      }
+    },
+    {
+      "code": "invalid_login",
+      "description": "Bad operator ID or password -- a legitimate rejection, not a system failure.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Invalid",
+        "target": null,
+        "http_status": 400,
+        "description": "page shows: 'Invalid' (HTTP 400)"
       }
     }
   ],

@@ -4,21 +4,72 @@
   "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start opening a new share for them. The 'share_type' input below is only a placeholder -- the exact share type options are not known in advance, so ignore its literal text. Instead, open the share-type dropdown, read the real options it offers, and select the FIRST one listed, using its exact option text -- not a guessed product name. Enter the given initial deposit amount; if the form rejects it as below a minimum, that is a legitimate validation_rejected business outcome, not a failure. Go through the review step, read the hidden per-transaction security token off the page, then post it. Read back the confirmation reference after posting.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
-    {"name": "operator_id", "value": "teller1", "description": "Operator login ID.", "sensitivity": "identifier"},
-    {"name": "password", "value": "password", "description": "Operator password.", "sensitivity": "secret"},
-    {"name": "member_id", "value": "101555", "description": "Member number.", "sensitivity": "identifier"},
-    {"name": "share_type", "value": "TBD -- read the first real option off the live dropdown", "description": "Placeholder only. Select the first real option listed in the share-type dropdown, not this placeholder text."},
-    {"name": "initial_deposit", "value": "100.00", "description": "Initial deposit in dollars, chosen well above a plausible minimum to avoid an unintended validation rejection."}
+    {
+      "name": "operator_id",
+      "value": "teller1",
+      "description": "Operator login ID.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "password",
+      "value": "password",
+      "description": "Operator password.",
+      "sensitivity": "secret"
+    },
+    {
+      "name": "member_id",
+      "value": "101555",
+      "description": "Member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "share_type",
+      "value": "TBD -- read the first real option off the live dropdown",
+      "description": "Placeholder only. Select the first real option listed in the share-type dropdown, not this placeholder text."
+    },
+    {
+      "name": "initial_deposit",
+      "value": "100.00",
+      "description": "Initial deposit in dollars, chosen well above a plausible minimum to avoid an unintended validation rejection."
+    }
   ],
   "outputs": [
-    {"name": "confirmation_ref", "description": "Confirmation reference shown after posting.", "sensitivity": "identifier"}
+    {
+      "name": "confirmation_ref",
+      "description": "Confirmation reference shown after posting.",
+      "sensitivity": "identifier"
+    }
   ],
   "business_outcomes": [
-    {"code": "member_not_found", "text": "not found", "http_status": 404, "description": "No member record matches the given member number."},
-    {"code": "validation_rejected", "text": "correct the following", "http_status": 400, "description": "The new-share form rejected the submitted values (e.g. deposit below minimum)."}
+    {
+      "code": "member_not_found",
+      "text": "not found",
+      "http_status": 404,
+      "description": "No member record matches the given member number."
+    },
+    {
+      "code": "validation_rejected",
+      "text": "correct the following",
+      "http_status": 400,
+      "description": "The new-share form rejected the submitted values (e.g. deposit below minimum)."
+    },
+    {
+      "code": "invalid_login",
+      "text": "Invalid",
+      "http_status": 400,
+      "description": "Bad operator ID or password -- a legitimate rejection, not a system failure."
+    }
   ],
   "known_interstitials": [
-    {"id": "session_expiry_notice", "text": "session", "http_status": 440, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Session-expiry notice interrupting navigation.", "max_applications": 2}
+    {
+      "id": "session_expiry_notice",
+      "text": "session",
+      "http_status": 440,
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Session-expiry notice interrupting navigation.",
+      "max_applications": 2
+    }
   ],
   "max_steps": 18
 }
