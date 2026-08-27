@@ -1,7 +1,7 @@
 {
   "capability_id": "meridian_member_inquiry",
   "name": "Look up a member by number or last name",
-  "goal": "Sign on to MERIDIAN CORE as the given operator, then search for the member using the given member number, and open that member's record. Read back the member's full name and status as shown on the record screen.",
+  "goal": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name and status as shown on the record screen.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
     {"name": "operator_id", "value": "teller1", "description": "Operator login ID.", "sensitivity": "identifier"},

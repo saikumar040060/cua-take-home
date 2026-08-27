@@ -141,10 +141,10 @@ python -m cua discover \
   --approve-risky
 ```
 
-Recorded capabilities so far: `specs/meridian_core/{sign_on,member_balance,funds_transfer,place_account_hold}.json`
-(recorded, in `artifacts/meridian_core/`) — including the supervisor-override
-hold path. `member_inquiry`, `open_new_share`, `update_member_info` are
-specced but not yet recorded.
+All 7 required functions are recorded and verified against the live target,
+in `artifacts/meridian_core/`: `sign_on`, `member_balance`, `funds_transfer`,
+`place_account_hold` (supervisor override), `member_inquiry`, `open_new_share`,
+and `update_member_info`.
 
 Run the capability API + chatbot + dashboard:
 

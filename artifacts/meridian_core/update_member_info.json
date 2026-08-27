@@ -1,0 +1,737 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "meridian_update_member_info",
+  "version": 1,
+  "name": "Update a member's contact information",
+  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open the Update Member Information form. Fill in the email, phone, and mailing address fields as given. Then explicitly click whatever button submits/saves this form (e.g. 'Save' or 'Update' -- it is a button, not a navigation link like 'Return to Member Record', which does not save anything). The page will show a confirmation banner ('CHANGES SAVED') but that banner is plain page text with no element reference, so it cannot be read as a value -- do not try. Instead, from the confirmation screen click 'Return to Member Record' to go back to the member's record, and read back the email address field now shown on that record as a single labeled value (the same way a specific share's balance was read as a single cell in the member-balance capability) -- this confirms the update actually took effect.\n\nReturns: confirmed_email — Email address read back from the member's record after saving, confirming the update took effect.. Possible business outcomes: member_not_found, invalid_contact_info.",
+  "provenance": {
+    "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open the Update Member Information form. Fill in the email, phone, and mailing address fields as given. Then explicitly click whatever button submits/saves this form (e.g. 'Save' or 'Update' -- it is a button, not a navigation link like 'Return to Member Record', which does not save anything). The page will show a confirmation banner ('CHANGES SAVED') but that banner is plain page text with no element reference, so it cannot be read as a value -- do not try. Instead, from the confirmation screen click 'Return to Member Record' to go back to the member's record, and read back the email address field now shown on that record as a single labeled value (the same way a specific share's balance was read as a single cell in the member-balance capability) -- this confirms the update actually took effect.",
+    "model": "claude-sonnet-4-5",
+    "run_id": "discovery-20260827T125337Z-a565f4",
+    "discovered_at": "2026-08-27T12:54:52.975985Z"
+  },
+  "entry_url_template": "https://web-sample.interface-hiring.com/",
+  "inputs": [
+    {
+      "name": "operator_id",
+      "kind": "string",
+      "description": "Operator login ID.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "password",
+      "kind": "string",
+      "description": "Operator password.",
+      "required": true,
+      "example": null,
+      "sensitivity": "secret"
+    },
+    {
+      "name": "member_id",
+      "kind": "string",
+      "description": "Member number.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "email",
+      "kind": "string",
+      "description": "New email address.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "phone",
+      "kind": "string",
+      "description": "New phone number.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "mailing_address",
+      "kind": "string",
+      "description": "New mailing address.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmed_email",
+      "kind": "string",
+      "description": "Email address read back from the member's record after saving, confirming the update took effect.",
+      "source_step_id": "s14_read_e_mail",
+      "sensitivity": "identifier"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s01_fill_operator_id",
+      "description": "Fill in the Operator ID field with {operator_id}",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Operator ID\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"operator\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{operator_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Operator ID\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"operator\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s02_fill_password",
+      "description": "Fill in the Password field",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Password\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"password\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{password}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Password\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"password\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s03_click_sign_on",
+      "description": "Click Sign On button to authenticate and proceed to main menu",
+      "action": "click",
+      "target": {
+        "description": "the button \"Sign On\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Sign On",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/menu",
+        "text": "Main Menu",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Main Menu at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s04_click_member_inquiry_selection",
+      "description": "Click Member Inquiry / Selection to look up member by member number",
+      "action": "click",
+      "target": {
+        "description": "the link \"Member Inquiry / Selection\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Member Inquiry / Selection",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Member Inquiry / Selection",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > a",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members",
+        "text": "Member Inquiry",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Member Inquiry at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s05_fill_value",
+      "description": "Enter the member number {member_id} to search for the member",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Value\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"q\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{member_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Value\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"q\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s06_click_search",
+      "description": "Click Search button to look up member {member_id}",
+      "action": "click",
+      "target": {
+        "description": "the button \"Search\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Search",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(2)",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members\\?by=number\\&q=[^/?#]+",
+        "text": null,
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows the expected page at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s07_click_select",
+      "description": "Click Select link to open the member record for Katherine Johnson ({member_id})",
+      "action": "click",
+      "target": {
+        "description": "the link \"Select\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Select",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Select",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+",
+        "text": null,
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows the expected page at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s08_click_update_member_informatio",
+      "description": "Click 'Update Member Information' to open the update form for member {member_id}",
+      "action": "click",
+      "target": {
+        "description": "the link \"Update Member Information\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Update Member Information",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Update Member Information",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > a:nth-of-type(3)",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+/update",
+        "text": null,
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows the expected page at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s09_fill_e_mail",
+      "description": "Fill in the email field with {email}",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"E-mail\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"email\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{email}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"E-mail\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"email\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s10_fill_phone",
+      "description": "Fill in the phone field with {phone}",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Phone\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"phone\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{phone}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Phone\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"phone\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s11_fill_mailing_address",
+      "description": "Fill in the mailing address field with {mailing_address}",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Mailing Address\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"address\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{mailing_address}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Mailing Address\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"address\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s12_click_save_changes",
+      "description": "Click Save Changes button to submit and save the updated member information",
+      "action": "click",
+      "target": {
+        "description": "the button \"Save Changes\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Save Changes",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+/update",
+        "text": "CHANGES SAVED",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows CHANGES SAVED at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s13_click_return_to_member_record",
+      "description": "Click 'Return to Member Record' to go back to the member's record and confirm the email was updated",
+      "action": "click",
+      "target": {
+        "description": "the link \"Return to Member Record\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Return to Member Record",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Return to Member Record",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > a:nth-of-type(1)",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+",
+        "text": "Johnson, Katherine",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Johnson, Katherine at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s14_read_e_mail",
+      "description": "Read the email address from the member record to confirm the update took effect",
+      "action": "read",
+      "target": {
+        "description": "the value cell next to \"E-mail\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"E-mail\")) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(3) > td > table:nth-of-type(1) > tbody > tr:nth-of-type(2) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Last resort: structural path (drift canary)."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "confirmed_email",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the value cell next to \"E-mail\"",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "tr:has(td:text-is(\"E-mail\")) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(3) > td > table:nth-of-type(1) > tbody > tr:nth-of-type(2) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Last resort: structural path (drift canary)."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "No member record matches the given member number.",
+      "detector": {
+        "url_pattern": null,
+        "text": "not found",
+        "target": null,
+        "http_status": 404,
+        "description": "page shows: 'not found' (HTTP 404)"
+      }
+    },
+    {
+      "code": "invalid_contact_info",
+      "description": "The email or phone submitted failed validation — a legitimate rejection.",
+      "detector": {
+        "url_pattern": null,
+        "text": "correct the following",
+        "target": null,
+        "http_status": 400,
+        "description": "page shows: 'correct the following' (HTTP 400)"
+      }
+    }
+  ],
+  "recovery_rules": [
+    {
+      "id": "session_expiry_notice",
+      "description": "Session-expiry notice interrupting navigation.",
+      "detector": {
+        "url_pattern": null,
+        "text": "session",
+        "target": null,
+        "http_status": 440,
+        "description": "page shows: 'session' (HTTP 440)"
+      },
+      "action_kind": "click",
+      "action_target": {
+        "description": "the button \"Continue\" that dismisses the interstitial",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Continue",
+            "note": "Interstitial dismiss control by role + accessible name."
+          }
+        ]
+      },
+      "max_applications": 2
+    }
+  ]
+}

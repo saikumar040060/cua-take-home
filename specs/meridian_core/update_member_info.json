@@ -1,7 +1,7 @@
 {
   "capability_id": "meridian_update_member_info",
   "name": "Update a member's contact information",
-  "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and update their contact information: email, phone, and mailing address, as given. Save the update and confirm it was accepted.",
+  "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open the Update Member Information form. Fill in the email, phone, and mailing address fields as given. Then explicitly click whatever button submits/saves this form (e.g. 'Save' or 'Update' -- it is a button, not a navigation link like 'Return to Member Record', which does not save anything). The page will show a confirmation banner ('CHANGES SAVED') but that banner is plain page text with no element reference, so it cannot be read as a value -- do not try. Instead, from the confirmation screen click 'Return to Member Record' to go back to the member's record, and read back the email address field now shown on that record as a single labeled value (the same way a specific share's balance was read as a single cell in the member-balance capability) -- this confirms the update actually took effect.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
     {"name": "operator_id", "value": "teller1", "description": "Operator login ID.", "sensitivity": "identifier"},
@@ -12,7 +12,7 @@
     {"name": "mailing_address", "value": "12 Example St, Springfield", "description": "New mailing address.", "sensitivity": "identifier"}
   ],
   "outputs": [
-    {"name": "update_status", "description": "Confirmation message shown after saving."}
+    {"name": "confirmed_email", "description": "Email address read back from the member's record after saving, confirming the update took effect.", "sensitivity": "identifier"}
   ],
   "business_outcomes": [
     {"code": "member_not_found", "text": "not found", "http_status": 404, "description": "No member record matches the given member number."},
