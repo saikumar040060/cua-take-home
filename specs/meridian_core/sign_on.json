@@ -4,17 +4,43 @@
   "goal": "Sign on to the MERIDIAN CORE credit-union servicing console using the given operator ID and password (select a branch if the sign-on screen asks for one), and reach the member-servicing home/menu screen. Confirm the signed-in operator's role is shown somewhere on the landing screen.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
-    {"name": "operator_id", "value": "teller1", "description": "Operator/teller login ID.", "sensitivity": "identifier"},
-    {"name": "password", "value": "password", "description": "Operator password.", "sensitivity": "secret"}
+    {
+      "name": "operator_id",
+      "value": "teller1",
+      "description": "Operator/teller login ID.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "password",
+      "value": "password",
+      "description": "Operator password.",
+      "sensitivity": "secret"
+    }
   ],
   "outputs": [
-    {"name": "landing_screen", "description": "Name/title of the screen reached after sign-on (proves session is active)."}
+    {
+      "name": "landing_screen",
+      "description": "Name/title of the screen reached after sign-on (proves session is active)."
+    }
   ],
   "business_outcomes": [
-    {"code": "invalid_login", "text": "Invalid", "http_status": 400, "description": "Bad operator ID or password — a legitimate rejection, not a system failure."}
+    {
+      "code": "invalid_login",
+      "text": "Invalid",
+      "http_status": null,
+      "description": "Bad operator ID or password \u2014 a legitimate rejection, not a system failure."
+    }
   ],
   "known_interstitials": [
-    {"id": "maintenance_notice", "text": "maintenance", "http_status": 503, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Unexpected maintenance interstitial shown during/after sign-on.", "max_applications": 1}
+    {
+      "id": "maintenance_notice",
+      "text": "maintenance",
+      "http_status": 503,
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Unexpected maintenance interstitial shown during/after sign-on.",
+      "max_applications": 1
+    }
   ],
   "max_steps": 12
 }

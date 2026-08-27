@@ -64,7 +64,7 @@
     {
       "code": "invalid_login",
       "text": "Invalid",
-      "http_status": 400,
+      "http_status": null,
       "description": "Bad operator ID or password -- a legitimate rejection, not a system failure."
     }
   ],

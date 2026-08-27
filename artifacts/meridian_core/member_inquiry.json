@@ -472,7 +472,7 @@
         "url_pattern": null,
         "text": "Invalid",
         "target": null,
-        "http_status": 400,
+        "http_status": null,
         "description": "page shows: 'Invalid' (HTTP 400)"
       }
     }
