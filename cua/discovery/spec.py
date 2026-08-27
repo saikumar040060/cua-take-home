@@ -46,6 +46,14 @@ class SpecBusinessOutcome(BaseModel):
     code: str
     text: str = Field(description="Visible text that identifies this outcome.")
     description: str
+    http_status: int | None = Field(
+        default=None,
+        description=(
+            "Optional HTTP status this outcome also/instead signals via "
+            "(e.g. 404 for member-not-found), for targets that use status "
+            "codes rather than distinct copy alone."
+        ),
+    )
 
 
 class SpecInterstitial(BaseModel):
@@ -53,6 +61,10 @@ class SpecInterstitial(BaseModel):
     text: str = Field(description="Visible text identifying the interstitial.")
     dismiss_role: str = "button"
     dismiss_name: str = Field(description="Accessible name of the dismiss control.")
+    http_status: int | None = Field(
+        default=None,
+        description="Optional HTTP status this interstitial also signals via.",
+    )
     description: str
     max_applications: int = 2
 

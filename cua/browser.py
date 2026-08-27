@@ -45,6 +45,23 @@ class BrowserSession:
         self.browser: Browser = self._pw.chromium.launch(**launch_kwargs)
         self.context = self.browser.new_context()
         self.page: Page = self.context.new_page()
+        # Some targets (MERIDIAN CORE) signal exceptional states via the
+        # HTTP status of the main-frame response rather than distinguishing
+        # them purely in visible text. Track the last such status directly
+        # on the page object so `probe_holds` can check it — no signature
+        # change needed at any of its call sites.
+        self.page._cua_last_status = None  # type: ignore[attr-defined]
+
+        def _track_status(response) -> None:
+            try:
+                if response.request.is_navigation_request() and (
+                    response.frame == self.page.main_frame
+                ):
+                    self.page._cua_last_status = response.status  # type: ignore[attr-defined]
+            except Exception:
+                pass
+
+        self.page.on("response", _track_status)
 
     def close(self) -> None:
         try:
@@ -441,6 +458,9 @@ def probe_holds(page: Page, probe, timeout_ms: int = 0) -> bool:
         ok = True
         if probe.url_pattern and not _re.search(probe.url_pattern, page.url):
             ok = False
+        if ok and getattr(probe, "http_status", None) is not None:
+            if getattr(page, "_cua_last_status", None) != probe.http_status:
+                ok = False
         if ok and probe.text:
             try:
                 body = page.inner_text("body", timeout=1000)

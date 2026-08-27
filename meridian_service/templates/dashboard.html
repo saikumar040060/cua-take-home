@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MERIDIAN CORE — Capability Dashboard</title>
+<style>
+  body { font-family: -apple-system, sans-serif; margin: 0; background: #0f1115; color: #e6e6e6; }
+  header { padding: 16px 24px; border-bottom: 1px solid #262a33; }
+  h1 { font-size: 16px; margin: 0; }
+  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 24px; }
+  section { background: #171a21; border: 1px solid #262a33; border-radius: 8px; padding: 12px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #9aa4b2; margin: 0 0 10px; }
+  .cap { border-bottom: 1px solid #262a33; padding: 8px 0; }
+  .cap:last-child { border-bottom: none; }
+  .cap .sig { font-family: monospace; font-size: 12px; color: #7dd3fc; }
+  .cap .desc { font-size: 12px; color: #b8c0cc; margin-top: 4px; white-space: pre-wrap; }
+  .runrow { border-bottom: 1px solid #262a33; padding: 8px 0; font-size: 12px; cursor: pointer; }
+  .runrow:hover { background: #1c2028; }
+  .status { display:inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; }
+  .status.success, .status.done { background: #14532d; color: #86efac; }
+  .status.business_outcome { background: #3f3f19; color: #fde68a; }
+  .status.hard_failure, .status.error { background: #4c1d1d; color: #fca5a5; }
+  .status.awaiting_human, .status.running { background: #1e3a5f; color: #93c5fd; }
+  #detail { grid-column: span 2; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow: auto; }
+  input, button { background: #0f1115; color: #e6e6e6; border: 1px solid #262a33; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
+  button { cursor: pointer; }
+  .chatlog div { margin-bottom: 8px; }
+  .chatlog .me { color: #93c5fd; }
+  .chatlog .bot { color: #86efac; }
+</style>
+</head>
+<body>
+<header><h1>MERIDIAN CORE — capabilities, runs, and evidence (read-only view over what the engine already records)</h1></header>
+<main>
+  <section>
+    <h2>Capability catalog</h2>
+    <div id="catalog">loading…</div>
+  </section>
+
+  <section>
+    <h2>Chat (routes to a capability, then runs deterministic replay)</h2>
+    <div class="chatlog" id="chatlog"></div>
+    <input id="chatInput" style="width:70%" placeholder="e.g. check the balance for member 100987">
+    <button onclick="sendChat()">Send</button>
+  </section>
+
+  <section style="grid-column: span 2;">
+    <h2>Run history</h2>
+    <div id="runs">loading…</div>
+  </section>
+
+  <section id="detailWrap" style="grid-column: span 2; display:none;">
+    <h2>Run detail</h2>
+    <div id="detail"></div>
+  </section>
+</main>
+
+<script>
+async function loadCatalog() {
+  const res = await fetch('/api/capabilities');
+  const caps = await res.json();
+  document.getElementById('catalog').innerHTML = caps.map(c => `
+    <div class="cap">
+      <div class="sig">${c.signature}</div>
+      <div class="desc">${c.description.split('\\n')[0]}</div>
+    </div>`).join('') || '<em>none recorded yet</em>';
+}
+
+async function loadRuns() {
+  const res = await fetch('/api/runs');
+  const runs = await res.json();
+  document.getElementById('runs').innerHTML = runs.map(r => {
+    const st = (r.result && r.result.status) || r.status;
+    return `<div class="runrow" onclick="showDetail('${r.run_id}')">
+      ${r.run_id} — ${r.capability_id} <span class="status ${st}">${st}</span>
+    </div>`;
+  }).join('') || '<em>no runs yet</em>';
+}
+
+async function showDetail(runId) {
+  const res = await fetch('/api/runs/' + runId);
+  const data = await res.json();
+  document.getElementById('detailWrap').style.display = 'block';
+  document.getElementById('detail').textContent = JSON.stringify(data, null, 2);
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+  const log = document.getElementById('chatlog');
+  log.innerHTML += `<div class="me">you: ${msg}</div>`;
+  input.value = '';
+  log.innerHTML += `<div class="bot" id="pending">…thinking</div>`;
+  const res = await fetch('/api/chat', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message: msg})
+  });
+  const data = await res.json();
+  document.getElementById('pending').remove();
+  log.innerHTML += `<div class="bot">bot: ${data.reply}</div>`;
+  loadRuns();
+}
+
+document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+
+loadCatalog();
+loadRuns();
+setInterval(loadRuns, 4000);
+</script>
+</body>
+</html>

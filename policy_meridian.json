@@ -1,0 +1,10 @@
+{
+  "allowed_origins": ["https://web-sample.interface-hiring.com"],
+  "allowed_path_prefixes": ["/"],
+  "blocked_path_prefixes": ["/admin", "/system-settings"],
+  "allowed_actions": ["navigate", "click", "fill", "select", "press", "read"],
+  "risky_name_patterns": [
+    "create", "submit", "delete", "remove", "transfer", "post", "approve",
+    "close account", "hold", "override", "confirm"
+  ]
+}

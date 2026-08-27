@@ -233,7 +233,14 @@ def build_capability(
         BusinessOutcome(
             code=o.code,
             description=o.description,
-            detector=StateProbe(text=o.text, description=f"page shows: {o.text!r}"),
+            detector=StateProbe(
+                text=o.text,
+                http_status=o.http_status,
+                description=(
+                    f"page shows: {o.text!r}"
+                    + (f" (HTTP {o.http_status})" if o.http_status else "")
+                ),
+            ),
         )
         for o in spec.business_outcomes
     ]
@@ -242,7 +249,14 @@ def build_capability(
         RecoveryRule(
             id=i.id,
             description=i.description,
-            detector=StateProbe(text=i.text, description=f"page shows: {i.text!r}"),
+            detector=StateProbe(
+                text=i.text,
+                http_status=i.http_status,
+                description=(
+                    f"page shows: {i.text!r}"
+                    + (f" (HTTP {i.http_status})" if i.http_status else "")
+                ),
+            ),
             action_kind=RecoveryActionKind.CLICK,
             action_target=ElementTarget(
                 description=f"the {i.dismiss_role} \"{i.dismiss_name}\" that dismisses the interstitial",

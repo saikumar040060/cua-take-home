@@ -132,6 +132,16 @@ class StateProbe(BaseModel):
     target: ElementTarget | None = Field(
         default=None, description="An element that must be present/visible."
     )
+    http_status: int | None = Field(
+        default=None,
+        description=(
+            "HTTP status of the last main-frame navigation response, for "
+            "targets that signal a state via status code rather than (or "
+            "in addition to) visible text — e.g. 404 for an unknown "
+            "record, 403 when an override is required, 503 during a "
+            "maintenance interstitial."
+        ),
+    )
     description: str = Field(description="What this probe verifies, in words.")
 
 

@@ -5,3 +5,5 @@ __pycache__/
 runs/
 .pytest_cache/
 .DS_Store
+.env.save
+_to_delete_*

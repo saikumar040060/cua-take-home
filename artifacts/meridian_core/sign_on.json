@@ -1,0 +1,278 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "meridian_sign_on",
+  "version": 1,
+  "name": "Sign on to MERIDIAN CORE",
+  "description": "Sign on to the MERIDIAN CORE credit-union servicing console using the given operator ID and password (select a branch if the sign-on screen asks for one), and reach the member-servicing home/menu screen. Confirm the signed-in operator's role is shown somewhere on the landing screen.\n\nReturns: landing_screen — Name/title of the screen reached after sign-on (proves session is active).. Possible business outcomes: invalid_login.",
+  "provenance": {
+    "goal": "Sign on to the MERIDIAN CORE credit-union servicing console using the given operator ID and password (select a branch if the sign-on screen asks for one), and reach the member-servicing home/menu screen. Confirm the signed-in operator's role is shown somewhere on the landing screen.",
+    "model": "claude-sonnet-4-5",
+    "run_id": "discovery-20260827T003938Z-305ea2",
+    "discovered_at": "2026-08-27T00:39:57.657477Z"
+  },
+  "entry_url_template": "https://web-sample.interface-hiring.com/",
+  "inputs": [
+    {
+      "name": "operator_id",
+      "kind": "string",
+      "description": "Operator/teller login ID.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "password",
+      "kind": "string",
+      "description": "Operator password.",
+      "required": true,
+      "example": null,
+      "sensitivity": "secret"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "landing_screen",
+      "kind": "string",
+      "description": "Name/title of the screen reached after sign-on (proves session is active).",
+      "source_step_id": "s04_read_main_menu",
+      "sensitivity": "public"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s01_fill_operator_id",
+      "description": "Fill in the Operator ID field with the provided value '{operator_id}'",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Operator ID\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"operator\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{operator_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Operator ID\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"operator\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s02_fill_password",
+      "description": "Fill in the Password field with the provided value '{password}'",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Password\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"password\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{password}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Password\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"password\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s03_click_sign_on",
+      "description": "Click the Sign On button to authenticate with the provided credentials and reach the member-servicing home screen",
+      "action": "click",
+      "target": {
+        "description": "the button \"Sign On\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Sign On",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/menu",
+        "text": null,
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows the expected page at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s04_read_main_menu",
+      "description": "Read the landing screen title 'Main Menu' which confirms the session is active and identifies the screen reached after sign-on",
+      "action": "read",
+      "target": {
+        "description": "the link \"Main Menu\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Main Menu",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Main Menu",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > font > a:nth-of-type(1)",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "landing_screen",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the link \"Main Menu\" (a)",
+          "locators": [
+            {
+              "strategy": "role",
+              "value": "link",
+              "name": "Main Menu",
+              "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+            },
+            {
+              "strategy": "text",
+              "value": "Main Menu",
+              "name": null,
+              "note": "Fallback: visible link text; stable until copy changes."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > table > tbody > tr:nth-of-type(2) > td > font > a:nth-of-type(1)",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "invalid_login",
+      "description": "Bad operator ID or password — a legitimate rejection, not a system failure.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Invalid",
+        "target": null,
+        "http_status": 400,
+        "description": "page shows: 'Invalid' (HTTP 400)"
+      }
+    }
+  ],
+  "recovery_rules": [
+    {
+      "id": "maintenance_notice",
+      "description": "Unexpected maintenance interstitial shown during/after sign-on.",
+      "detector": {
+        "url_pattern": null,
+        "text": "maintenance",
+        "target": null,
+        "http_status": 503,
+        "description": "page shows: 'maintenance' (HTTP 503)"
+      },
+      "action_kind": "click",
+      "action_target": {
+        "description": "the button \"Continue\" that dismisses the interstitial",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Continue",
+            "note": "Interstitial dismiss control by role + accessible name."
+          }
+        ]
+      },
+      "max_applications": 1
+    }
+  ]
+}

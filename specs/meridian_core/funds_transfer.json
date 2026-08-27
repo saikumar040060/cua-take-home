@@ -1,0 +1,29 @@
+{
+  "capability_id": "meridian_funds_transfer",
+  "name": "Transfer funds between two shares for a member",
+  "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start a funds transfer. The From Share and To Share fields are dropdowns whose options are share IDs (e.g. '100987-S0001'); select exactly the given from_share and to_share values by their share ID, not by guessing a product name. Fill in the amount and memo as given. Go through the review step, confirm the details shown match what was entered, read the hidden per-transaction security token off the page, then post the transfer. This action is irreversible once posted. Read back the confirmation reference after posting.",
+  "entry_url": "https://web-sample.interface-hiring.com/",
+  "inputs": [
+    {"name": "operator_id", "value": "teller1", "description": "Operator login ID.", "sensitivity": "identifier"},
+    {"name": "password", "value": "password", "description": "Operator password.", "sensitivity": "secret"},
+    {"name": "member_id", "value": "100987", "description": "Member number.", "sensitivity": "identifier"},
+    {"name": "from_share", "value": "100987-MMKT-11", "description": "Share ID to transfer from (as shown in the From Share dropdown, e.g. '100987-MMKT-11')."},
+    {"name": "to_share", "value": "100987-S0001-4", "description": "Share ID to transfer to (as shown in the To Share dropdown, e.g. '100987-S0001-4')."},
+    {"name": "amount", "value": "25.00", "description": "Transfer amount in dollars."},
+    {"name": "memo", "value": "Routine transfer between shares", "description": "Memo for the transfer."}
+  ],
+  "outputs": [
+    {"name": "confirmation_ref", "description": "Confirmation reference shown after posting.", "sensitivity": "identifier"}
+  ],
+  "business_outcomes": [
+    {"code": "member_not_found", "text": "not found", "http_status": 404, "description": "No member record matches the given member number."},
+    {"code": "insufficient_funds", "text": "insufficient", "http_status": 400, "description": "The from-share does not have enough available balance — a legitimate rejection."},
+    {"code": "validation_rejected", "text": "correct the following", "http_status": 400, "description": "The transfer form rejected the submitted values."},
+    {"code": "share_on_hold", "text": "HOLD and cannot be debited", "http_status": 400, "description": "The source share is on HOLD and cannot be debited — a legitimate business-rule rejection, not a system failure."}
+  ],
+  "known_interstitials": [
+    {"id": "session_expiry_notice", "text": "session", "http_status": 440, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Session-expiry notice interrupting navigation.", "max_applications": 2},
+    {"id": "maintenance_notice", "text": "maintenance", "http_status": 503, "dismiss_role": "button", "dismiss_name": "Continue", "description": "Unexpected maintenance interstitial.", "max_applications": 1}
+  ],
+  "max_steps": 20
+}

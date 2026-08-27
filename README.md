@@ -120,4 +120,42 @@ specs/             goal specifications (the operator-declared contract)
 artifacts/         recorded capabilities
 evidence/          committed example runs (discovery + replays)
 tests/             pytest suite (runs hermetically, no API key)
+meridian_service/  capability API + chatbot + dashboard for MERIDIAN CORE
 ```
+
+## MERIDIAN CORE adaptation
+
+The same core also drives a second, unrelated live target — MERIDIAN CORE, a
+credit-union servicing console at `web-sample.interface-hiring.com` — with no
+changes to the discovery loop, artifact schema, or replay engine themselves.
+See `ADAPTATION.md` for what adapting to it actually required.
+
+Record a capability against the live target (needs real network access —
+this will not work from a sandboxed/offline environment):
+
+```bash
+python -m cua discover \
+  --spec specs/meridian_core/member_balance.json \
+  --out artifacts/meridian_core/member_balance.json \
+  --policy policy_meridian.json \
+  --approve-risky
+```
+
+Recorded capabilities so far: `specs/meridian_core/{sign_on,member_balance,funds_transfer,place_account_hold}.json`
+(recorded, in `artifacts/meridian_core/`) — including the supervisor-override
+hold path. `member_inquiry`, `open_new_share`, `update_member_info` are
+specced but not yet recorded.
+
+Run the capability API + chatbot + dashboard:
+
+```bash
+python -m meridian_service.app
+```
+
+Then open **http://127.0.0.1:5077** — browse the capability catalog, type a
+plain-language request into the chat box (e.g. "check the balance for member
+100987, operator teller1 password password"), and watch it route to the right
+capability and run the real deterministic replay. Run history and evidence
+are visible on the same page. `GET /api/capabilities` and
+`POST /api/capabilities/<id>/invoke` are the callable API a calling agent
+would use directly, with no knowledge of the underlying UI.
