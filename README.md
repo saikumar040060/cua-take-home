@@ -210,7 +210,7 @@ first_share_balance=$52.00, first_share_status=OPEN
 Type:
 
 ```
-transfer $5 from share 102777-S0001 to share 102777-MMKT for member 102777, memo routine transfer, operator teller1 password password
+transfer $1 from share 102777-MMKT-3 to share 102777-MMKT-4 for member 102777, memo routine transfer, operator teller1 password password
 ```
 
 This is a risky, irreversible action, so it pauses instead of just running. Expected: the run shows status `awaiting_human`:
@@ -231,7 +231,7 @@ curl -s -X POST http://127.0.0.1:5077/api/runs/RUN_ID/command \
   -H "Content-Type: application/json" -d '{"command":"approve"}'
 ```
 
-Run it once, check the run again, see it paused a second time at `s14_click_post_transfer`, run the same approve command again. A verified, freshly-tested run of `102777-S0001` → `102777-MMKT` completed with confirmation `CN480028` after two approvals — a different confirmation on a fresh run is fine.
+Run it once, then check the run again. On the most recent test, the source share had gone on `HOLD` since the last run, so instead of pausing a second time, it correctly reported a `business_outcome` (`share_on_hold`) at `s14_click_post_transfer` instead -- the engine checks for a legitimate business rejection before ever escalating for something that isn't going to happen anyway. If the share isn't on hold, expect a second pause at `s14_click_post_transfer` -- run the same approve command again. A verified, freshly-tested run of `102777-MMKT-3` → `102777-MMKT-4` for $1 completed live, confirmed by the balances moving from $5.00/$5.00 to $4.00/$6.00 on the member record. If these shares have also changed by demo time, sign on manually, pull up member 102777's record, and use whatever two `OPEN` shares are shown live.
 
 ### Step 4 — The supervisor-override capability
 
