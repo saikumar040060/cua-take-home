@@ -231,7 +231,13 @@ curl -s -X POST http://127.0.0.1:5077/api/runs/RUN_ID/command \
   -H "Content-Type: application/json" -d '{"command":"approve"}'
 ```
 
-Run it once, then check the run again. On the most recent test, the source share had gone on `HOLD` since the last run, so instead of pausing a second time, it correctly reported a `business_outcome` (`share_on_hold`) at `s14_click_post_transfer` instead -- the engine checks for a legitimate business rejection before ever escalating for something that isn't going to happen anyway. If the share isn't on hold, expect a second pause at `s14_click_post_transfer` -- run the same approve command again. A verified, freshly-tested run of `102777-MMKT-3` → `102777-MMKT-4` for $1 completed live, confirmed by the balances moving from $5.00/$5.00 to $4.00/$6.00 on the member record. If these shares have also changed by demo time, sign on manually, pull up member 102777's record, and use whatever two `OPEN` shares are shown live.
+To check the run's current status (same RUN_ID), use:
+
+```bash
+curl -s http://127.0.0.1:5077/api/runs/RUN_ID
+```
+
+Run the approve command once, then check the run again. On the most recent test, the source share had gone on `HOLD` since the last run, so instead of pausing a second time, it correctly reported a `business_outcome` (`share_on_hold`) at `s14_click_post_transfer` instead -- the engine checks for a legitimate business rejection before ever escalating for something that isn't going to happen anyway. If the share isn't on hold, expect a second pause at `s14_click_post_transfer` -- run the same approve command again. A verified, freshly-tested run of `102777-MMKT-3` → `102777-MMKT-4` for $1 completed live, confirmed by the balances moving from $5.00/$5.00 to $4.00/$6.00 on the member record. If these shares have also changed by demo time, sign on manually, pull up member 102777's record, and use whatever two `OPEN` shares are shown live.
 
 ### Step 4 — The supervisor-override capability
 
