@@ -30,8 +30,11 @@ playwright install chromium          # skip if Chromium is already available
 cp .env.example .env                 # then put your Anthropic API key in .env
 ```
 
-The API key is needed **only for discovery**. Replay, the mock app, and the
-whole test suite run without any key or network access.
+The API key is needed **only for discovery** in the original take-home flow
+below. Replay, the mock app, and the whole test suite run without any key or
+network access. The one exception is the MERIDIAN CORE chatbot further down
+this README -- it also calls the API live to route each chat message, so make
+sure your key is in `.env` before using its chat box.
 
 If you cannot (or don't want to) let Playwright download a browser, point
 `CUA_CHROMIUM_PATH` in `.env` at an existing Chromium/Chrome binary.
