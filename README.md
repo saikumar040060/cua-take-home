@@ -162,3 +162,99 @@ capability and run the real deterministic replay. Run history and evidence
 are visible on the same page. `GET /api/capabilities` and
 `POST /api/capabilities/<id>/invoke` are the callable API a calling agent
 would use directly, with no knowledge of the underlying UI.
+
+## Live Demo Path (MERIDIAN CORE)
+
+This is the script for presenting the MERIDIAN CORE stretch adaptation live, in order: breadth first, then the safety/escalation story, then failure-handling.
+
+**Before presenting**, start the service and confirm it's up:
+
+```bash
+cd cua-take-home
+source .venv/bin/activate
+python -m meridian_service.app
+```
+
+Open **http://127.0.0.1:5077** and confirm the dashboard loads with all 7 capabilities in the catalog panel.
+
+**One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows.
+
+### Step 1 — Capability catalog (10 seconds)
+
+Point at the dashboard's catalog panel: all 7 required functions are recorded and callable right now, each with a typed signature. Example:
+
+```
+meridian_member_balance(operator_id, password, member_id)
+  -> {first_share_balance, first_share_status}
+```
+
+### Step 2 — Chat: balance check (success path)
+
+In the chat box, type:
+
+```
+check the balance for member 100987, operator teller1 password password
+```
+
+One LLM call routes the plain-language request to a capability name and typed arguments — it never touches the browser. Everything after that is deterministic replay of a recorded artifact, no model in the loop.
+
+Expected reply (as of the last test — numbers may differ if the environment reset):
+
+```
+bot: Done. meridian_member_balance succeeded:
+first_share_balance=$52.00, first_share_status=OPEN
+```
+
+### Step 3 — Chat: funds transfer (escalation path)
+
+Type:
+
+```
+transfer $5 from share 102777-S0001 to share 102777-MMKT for member 102777, memo routine transfer, operator teller1 password password
+```
+
+This is a risky, irreversible action, so it pauses instead of just running. Expected: the run shows status `awaiting_human`:
+
+```
+bot: I started 'meridian_funds_transfer' but it needs a human decision
+before continuing: step 's08_click_funds_transfer' is classified RISKY...
+Open the dashboard to look at the live session and approve, deny, or
+act on it.
+```
+
+That pause is enforced inside the replay engine itself, not the chatbot or API layer — no code path can skip it.
+
+**This capability pauses TWICE, not once** — once at the navigation click into Funds Transfer, once at the actual Post Transfer click (the real irreversible step; the navigation link is flagged too, a known documented cut in `ADAPTATION.md`). The dashboard has no approve/deny button (kept minimal by design), so approving happens via the API:
+
+```bash
+curl -s -X POST http://127.0.0.1:5077/api/runs/RUN_ID/command \
+  -H "Content-Type: application/json" -d '{"command":"approve"}'
+```
+
+Run it once, check the run again, see it paused a second time at `s14_click_post_transfer`, run the same approve command again. A verified, freshly-tested run of `102777-S0001` → `102777-MMKT` completed with confirmation `CN480028` after two approvals — a different confirmation on a fresh run is fine.
+
+### Step 4 — The supervisor-override capability
+
+Type:
+
+```
+place a hold on member 103001's share, reason routine review, operator super1 password password
+```
+
+This exercises the supervisor-override path — gated differently from teller-level actions, and irreversible, so it's a second, distinct risky-action test. Real recorded outcome: share `103001-MMKT-3`, confirmation reference `CN480377`.
+
+### Step 5 — Quick coverage flex (only if time allows)
+
+```
+look up member 100234, operator teller1 password password
+```
+
+Real recorded result: `member_name=Lovelace, Ada`, `member_status=OPEN`. This is the 7th function, read-only member lookup. Skip this step if short on time — Steps 1–4 already prove the important things.
+
+### Step 6 — An exceptional state (proves the 3-bucket taxonomy)
+
+```
+check the balance for member 999999, operator teller1 password password
+```
+
+Expected: a clean `member_not_found` business outcome (HTTP 404 under the hood) — reported as a normal, non-alarming result, not an error. Every run in this system sorts into exactly one of three buckets: business outcome, recoverable condition, hard failure — including runs coming through this new API/chatbot layer, verified live.
