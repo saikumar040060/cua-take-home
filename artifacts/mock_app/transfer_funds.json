@@ -7,8 +7,8 @@
   "provenance": {
     "goal": "Look up the member by member number, open their profile, and click 'Transfer Funds'. The From Account and To Account fields are dropdowns whose options are account numbers; select exactly the given from_account and to_account values by their account number, not by guessing a product name. Fill in the amount and post the transfer. Read back the confirmation reference after posting. This action is irreversible once posted.",
     "model": "claude-sonnet-4-5",
-    "run_id": "discovery-20260830T201110Z-5d0ac7",
-    "discovered_at": "2026-08-30T20:11:34.626154Z"
+    "run_id": "discovery-20260830T211003Z-c9cdd8",
+    "discovered_at": "2026-08-30T21:10:29.103525Z"
   },
   "entry_url_template": "http://127.0.0.1:5000/",
   "inputs": [
@@ -57,7 +57,7 @@
   "steps": [
     {
       "id": "s01_fill_member_no",
-      "description": "Fill in the member number {member_id} to look up the member",
+      "description": "Enter the member number {member_id} to look up the member",
       "action": "fill",
       "target": {
         "description": "the textbox \"Member No\" (input)",
@@ -141,7 +141,7 @@
     },
     {
       "id": "s03_click_transfer_funds",
-      "description": "Click the Transfer Funds link to initiate a transfer between accounts",
+      "description": "Click the Transfer Funds link to open the transfer funds page",
       "action": "click",
       "target": {
         "description": "the link \"Transfer Funds\" (a)",
@@ -169,19 +169,19 @@
       "value_template": null,
       "url_template": null,
       "output_name": null,
-      "risk": "risky",
+      "risk": "safe",
       "checkpoint": {
         "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/transfer",
-        "text": "From Account",
+        "text": "Transfer Funds",
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows From Account at the expected URL"
+        "description": "after click, the app shows Transfer Funds at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s04_select_from_account",
-      "description": "Select the from account {from_account}",
+      "description": "Select the from_account {from_account} from the From Account dropdown",
       "action": "select",
       "target": {
         "description": "the combobox \"From Account\" (select)",
@@ -231,7 +231,7 @@
     },
     {
       "id": "s05_select_to_account",
-      "description": "Select the to account {to_account}",
+      "description": "Select the to_account {to_account} from the To Account dropdown",
       "action": "select",
       "target": {
         "description": "the combobox \"To Account\" (select)",
@@ -331,7 +331,7 @@
     },
     {
       "id": "s07_click_post_transfer",
-      "description": "Click the Post Transfer button to submit the transfer",
+      "description": "Click Post Transfer to submit the transfer transaction",
       "action": "click",
       "target": {
         "description": "the button \"Post Transfer\" (input)",
@@ -365,7 +365,7 @@
     },
     {
       "id": "s08_read_confirmation_ref",
-      "description": "Read the confirmation reference number from the transfer confirmation page",
+      "description": "Read the confirmation reference number for the posted transfer",
       "action": "read",
       "target": {
         "description": "the value cell next to \"Confirmation Ref\"",

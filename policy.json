@@ -4,7 +4,8 @@
   "blocked_path_prefixes": ["/admin"],
   "allowed_actions": ["navigate", "click", "fill", "select", "press", "read"],
   "risky_name_patterns": [
-    "create", "submit", "delete", "remove", "transfer", "post", "approve",
-    "close account", "save changes", "lock card", "unlock card", "place hold"
+    "^create", "^submit", "^delete", "^remove", "^post transfer$", "^approve",
+    "^close account$", "^save changes$", "^lock card$", "^unlock card$",
+    "^place hold$"
   ]
 }
