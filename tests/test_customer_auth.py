@@ -18,13 +18,20 @@ test client and the module's own functions.
 
 from __future__ import annotations
 
+import importlib
+from types import SimpleNamespace
+
 import pytest
+
+service_app = importlib.import_module("meridian_service.app")
 
 from meridian_service.app import (
     KNOWN_CUSTOMERS,
     SYSTEMS,
     _bind_system_credentials,
     _catalog_tools,
+    _customer_profile,
+    _public_demo_route,
     app,
     customer_system,
     find_capability_system,
@@ -94,6 +101,67 @@ def test_chat_requires_login(client):
     response = client.post("/api/chat", json={"message": "check my balance"})
     assert response.status_code == 401
     assert response.get_json()["login_required"] is True
+
+
+def test_public_demo_routes_meridian_login_to_synthetic_backend(monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    profile = _customer_profile("100987")
+    assert profile["system"] == "mock_app"
+    assert profile["member_id"] == "100987"
+    assert profile["accounts"] == KNOWN_CUSTOMERS["100987"]["accounts"]
+
+
+def test_public_demo_router_handles_safe_catalog_and_balance_requests():
+    profile = {"member_id": "100987", "accounts": ["100987-MMKT-11"]}
+    catalog = _public_demo_route("Show available banking capabilities", "100987", profile)
+    assert catalog["status"] == 200
+    assert "read-only" in catalog["reply"]
+
+    balance = _public_demo_route("Check my balance", "100987", profile)
+    assert balance == {
+        "capability_id": "mock_member_balance",
+        "input": {"account_no": "100987-MMKT-11"},
+    }
+
+
+def test_public_demo_router_rejects_another_member():
+    profile = {"member_id": "100987", "accounts": ["100987-MMKT-11"]}
+    routed = _public_demo_route("Look up member 100234", "100987", profile)
+    assert routed["status"] == 403
+    assert "current session" in routed["reply"]
+
+
+def test_public_demo_chat_uses_session_bound_synthetic_member(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    captured = {}
+
+    def fake_start(system_key, capability, params, **kwargs):
+        captured.update(system=system_key, capability=capability.capability_id, params=params)
+        return SimpleNamespace(run_id="replay-test")
+
+    monkeypatch.setattr(service_app, "start_replay", fake_start)
+    monkeypatch.setattr(
+        service_app,
+        "_await_result",
+        lambda run_id: {
+            "status": "done",
+            "result": {
+                "status": "success",
+                "outputs": {"account_balance": "$8,420.17", "account_status": "OPEN"},
+            },
+        },
+    )
+    _login(client, "100987")
+    response = client.post("/api/chat", json={"message": "Check my balance"})
+    assert response.status_code == 200
+    assert captured == {
+        "system": "mock_app",
+        "capability": "mock_member_balance",
+        "params": {"account_no": "100987-MMKT-11", "member_id": "100987"},
+    }
+    assert "$8,420.17" in response.get_json()["reply"]
 
 
 def test_chat_tool_schema_never_offers_member_id():

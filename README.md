@@ -256,9 +256,11 @@ an authorized caller supplies confirmation.
 
 Set `PUBLIC_DEMO_READ_ONLY=true` for every public submission deployment. It
 blocks all write capabilities and employee commands until bank SSO/JWT and
-role-based authorization are integrated. Use only synthetic legacy credentials
-in a public demo; never deploy production bank credentials with this
-unauthenticated submission surface.
+role-based authorization are integrated. Set `PUBLIC_DEMO_SYNTHETIC=true` to
+run the bundled synthetic bank and safe deterministic read-only chat router;
+this public path needs neither private bank credentials nor an LLM API key.
+Never deploy production bank credentials with this unauthenticated submission
+surface.
 
 ## Live Demo Path (MERIDIAN CORE)
 

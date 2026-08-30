@@ -222,6 +222,82 @@ def _gen_members(count: int, *, start_no: int, seed: int) -> dict[str, Member]:
 
 MEMBERS.update(_gen_members(120, start_no=20001, seed=42))
 
+# Stable public-demo records.  The customer UI historically used these
+# Meridian-style member and account numbers, but a hosted public demo must not
+# depend on a private bank endpoint or its credentials.  Keeping equivalent,
+# explicitly synthetic records in the bundled legacy app lets the exact same
+# recorded browser capabilities run end to end in an isolated environment.
+_PUBLIC_DEMO_MEMBERS = {
+    "100987": Member(
+        member_no="100987",
+        name="Lee, Jordan",
+        ssn_last4="0987",
+        dob="04/18/1989",
+        phone="(313) 555-0101",
+        address="100 Demo Way, Detroit, MI 48201",
+        accounts=[
+            Account("100987-MMKT-11", "Money Market", "$8,420.17", "03/12/2018"),
+            Account("100987-S0001-9", "Regular Savings", "$2,195.44", "03/12/2018"),
+        ],
+    ),
+    "100234": Member(
+        member_no="100234",
+        name="Lovelace, Ada",
+        ssn_last4="0234",
+        dob="12/10/1990",
+        phone="(248) 555-0102",
+        address="234 Demo Way, Royal Oak, MI 48067",
+        accounts=[
+            Account("100234-S0001-6", "Regular Savings", "$5,730.28", "09/08/2016"),
+            Account("100234-MMKT-16", "Money Market", "$14,006.91", "09/08/2016"),
+        ],
+    ),
+    "101555": Member(
+        member_no="101555",
+        name="Patel, Priya",
+        ssn_last4="1555",
+        dob="07/22/1986",
+        phone="(734) 555-0103",
+        address="1555 Demo Way, Ann Arbor, MI 48104",
+        accounts=[
+            Account("101555-CERT-4", "Certificate", "$25,000.00", "01/15/2022"),
+            Account("101555-S0001-5", "Regular Savings", "$3,882.63", "01/15/2022"),
+        ],
+    ),
+    "102777": Member(
+        member_no="102777",
+        name="Okafor, Amara",
+        ssn_last4="2777",
+        dob="02/03/1979",
+        phone="(586) 555-0104",
+        address="2777 Demo Way, Warren, MI 48089",
+        accounts=[
+            Account("102777-MMKT-3", "Money Market", "$11,480.75", "05/20/2014"),
+            Account("102777-MMKT-4", "Money Market", "$6,104.09", "05/20/2014"),
+        ],
+    ),
+    "103001": Member(
+        member_no="103001",
+        name="Nguyen, Minh",
+        ssn_last4="3001",
+        dob="10/29/1994",
+        phone="(810) 555-0105",
+        address="3001 Demo Way, Troy, MI 48083",
+        accounts=[
+            Account("103001-MMKT-4", "Money Market", "$9,955.32", "08/11/2020"),
+            Account("103001-MMKT-7", "Money Market", "$18,241.80", "08/11/2020"),
+        ],
+    ),
+}
+
+for _demo_member in _PUBLIC_DEMO_MEMBERS.values():
+    for _account in _demo_member.accounts:
+        _demo_member.transactions[_account.number] = [
+            Transaction("08/28/2026", "ACH DEPOSIT - PAYROLL", "+1,250.00"),
+            Transaction("08/27/2026", "POS PURCHASE - GROCERY", "-64.31"),
+        ]
+    MEMBERS[_demo_member.member_no] = _demo_member
+
 # One deliberately zero-balance account, so close_account has a real success
 # path to record/replay against, not just the nonzero-balance rejection.
 MEMBERS["20001"].accounts.append(

@@ -4,19 +4,9 @@ services:
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /healthz
+    healthCheckPath: /readyz
     autoDeployTrigger: commit
     envVars:
-      - key: ANTHROPIC_API_KEY
-        sync: false
-      - key: MERIDIAN_OPERATOR_ID
-        sync: false
-      - key: MERIDIAN_OPERATOR_PASSWORD
-        sync: false
-      - key: MERIDIAN_SUPERVISOR_ID
-        sync: false
-      - key: MERIDIAN_SUPERVISOR_PASSWORD
-        sync: false
       - key: CUA_MODEL
         value: claude-sonnet-4-5
       - key: LOG_LEVEL
@@ -24,4 +14,8 @@ services:
       # Mandatory for this unauthenticated public submission surface. Never
       # disable this with real credentials; use a private deployment instead.
       - key: PUBLIC_DEMO_READ_ONLY
+        value: "true"
+      # Runs the bundled synthetic legacy bank inside the same service, so
+      # the public demo needs no private bank or LLM credentials to work.
+      - key: PUBLIC_DEMO_SYNTHETIC
         value: "true"

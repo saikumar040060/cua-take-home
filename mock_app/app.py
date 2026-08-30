@@ -68,6 +68,11 @@ def home():
     return render_template("home.html")
 
 
+@app.get("/healthz")
+def healthz():
+    return {"status": "ok", "members": len(MEMBERS)}
+
+
 @app.get("/member/search")
 def member_search():
     member_no = (request.args.get("mno") or "").strip()

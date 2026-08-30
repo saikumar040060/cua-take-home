@@ -28,6 +28,7 @@
   main { max-width:960px; margin:0 auto; padding:34px 24px 90px; }
   .welcome h1 { margin:0 0 4px; font-size:27px; color:var(--navy); letter-spacing:-.02em; }
   .welcome p { margin:0; color:var(--muted); font-size:13.5px; }
+  .demo-note { margin-top:14px; max-width:760px; padding:10px 13px; border:1px solid #d7e2fb; border-radius:10px; background:#f4f7ff; color:#41547f; font-size:13px; }
 
   .section-head { display:flex; align-items:baseline; justify-content:space-between; margin:30px 0 14px; }
   .section-head h2 { margin:0; font-size:15px; color:var(--navy); text-transform:uppercase; letter-spacing:.06em; }
@@ -105,17 +106,23 @@
 </header>
 <nav class="subnav">
   <button type="button" class="active" data-msg="">Overview</button>
+  {% if public_demo_read_only %}
+  <button type="button" data-msg="Show my recent transactions">Recent activity</button>
+  <button type="button" data-msg="Show available banking capabilities">Capabilities</button>
+  {% else %}
   <button type="button" data-msg="I want to transfer funds between my accounts">Transfer</button>
   <button type="button" data-msg="I want to update my contact information">Update info</button>
+  {% endif %}
 </nav>
 
 <main>
   <div class="welcome">
     <h1>Welcome back{% if member_name %}, {{ member_name.split(',')[-1].strip() if ',' in member_name else member_name }}{% endif %}</h1>
     <p>Member {{ member_id }} — everything below is your own account only.</p>
+    {% if public_demo_synthetic %}<div class="demo-note"><b>Safe public demo:</b> all names, accounts, balances, and transactions shown here are synthetic. Read actions use the real recorded browser-automation pipeline; write actions stay disabled.</div>{% endif %}
   </div>
 
-  <div class="section-head"><h2>Bank accounts</h2><span>Live balances · ask the assistant about any other account by ID</span></div>
+  <div class="section-head"><h2>Bank accounts</h2><span>{% if public_demo_synthetic %}Synthetic balances · verified through browser replay{% else %}Live balances · ask the assistant about any other account by ID{% endif %}</span></div>
   <div class="panel">
     {% for a in accounts %}
       <div class="acct-row">
@@ -129,7 +136,7 @@
               <div class="bal">{{ a.balance }}</div>
               <span class="badge {{ 'open' if 'OPEN' in (a.status or '') else 'hold' }}">{{ a.status }}</span>
             </div>
-            <button class="btn-sm" type="button" data-msg="Transfer funds from {{ a.share_id }}">Transfer</button>
+            <button class="btn-sm" type="button" data-msg="{% if public_demo_read_only %}Show recent transactions for {{ a.share_id }}{% else %}Transfer funds from {{ a.share_id }}{% endif %}">{% if public_demo_read_only %}Activity{% else %}Transfer{% endif %}</button>
           {% else %}
             <div class="figures"><div class="bal na">Unable to load right now</div></div>
           {% endif %}
@@ -144,17 +151,17 @@
       <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg></div>
       <div><strong>Check a balance</strong><span>Ask about any of your accounts</span></div>
     </button>
-    <button type="button" data-msg="I want to transfer funds between my accounts">
+    <button type="button" data-msg="{% if public_demo_read_only %}Show my recent transactions{% else %}I want to transfer funds between my accounts{% endif %}">
       <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13M13 4l4 4-4 4"/><path d="M20 16H7M11 12l-4 4 4 4"/></svg></div>
-      <div><strong>Transfer funds</strong><span>Move money between your shares</span></div>
+      <div><strong>{% if public_demo_read_only %}Recent activity{% else %}Transfer funds{% endif %}</strong><span>{% if public_demo_read_only %}Show the latest transaction{% else %}Move money between your shares{% endif %}</span></div>
     </button>
-    <button type="button" data-msg="I want to open a new share">
+    <button type="button" data-msg="{% if public_demo_read_only %}What's my name on file?{% else %}I want to open a new share{% endif %}">
       <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M12 10v6M9 13h6"/></svg></div>
-      <div><strong>Open a new account</strong><span>Start a new share</span></div>
+      <div><strong>{% if public_demo_read_only %}Member record{% else %}Open a new account{% endif %}</strong><span>{% if public_demo_read_only %}Check the name on file{% else %}Start a new share{% endif %}</span></div>
     </button>
-    <button type="button" data-msg="I want to update my contact information">
+    <button type="button" data-msg="{% if public_demo_read_only %}Show available banking capabilities{% else %}I want to update my contact information{% endif %}">
       <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4l11-11-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></div>
-      <div><strong>Update my info</strong><span>Email, phone, address</span></div>
+      <div><strong>{% if public_demo_read_only %}Capabilities{% else %}Update my info{% endif %}</strong><span>{% if public_demo_read_only %}See approved banking services{% else %}Email, phone, address{% endif %}</span></div>
     </button>
   </div>
 </main>
@@ -228,13 +235,20 @@ function addMessage(text, who) {
 function addPills() {
   const wrap = document.createElement('div');
   wrap.className = 'pills';
-  [
+  const suggestions = publicReadOnly ? [
+    'Check my balance',
+    'Show my recent transactions',
+    "What's my name on file?",
+    'Show available banking capabilities',
+    'Talk to a person',
+  ] : [
     'Check my balance',
     'Transfer funds between my accounts',
     'Open a new share',
     'Update my contact info',
     'Talk to a person',
-  ].forEach(text => {
+  ];
+  suggestions.forEach(text => {
     const b = document.createElement('button');
     b.className = 'pill-btn'; b.type = 'button'; b.textContent = text;
     b.onclick = () => { input.value = text; sendChat(); };

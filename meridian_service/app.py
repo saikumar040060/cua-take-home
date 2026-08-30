@@ -164,7 +164,7 @@ KNOWN_CUSTOMERS: dict[str, dict[str, Any]] = {
 
 
 def customer_system(customer_id: str) -> BackendSystem:
-    return SYSTEMS[KNOWN_CUSTOMERS[customer_id]["system"]]
+    return SYSTEMS[_customer_profile(customer_id)["system"]]
 
 
 # --------------------------------------------------------------------- #
@@ -197,6 +197,27 @@ def _json_log(event: str, **fields: Any) -> None:
 def _public_demo_read_only() -> bool:
     """Fail closed for public demos that do not yet have bank SSO/JWT."""
     return os.environ.get("PUBLIC_DEMO_READ_ONLY", "false").lower() == "true"
+
+
+def _public_demo_synthetic() -> bool:
+    """Use the bundled synthetic bank for a self-contained hosted demo.
+
+    Read-only public deployments default to this mode so an existing Render
+    service becomes functional on the next code deploy even before its
+    Blueprint environment is re-synced.  Private deployments can explicitly
+    set PUBLIC_DEMO_SYNTHETIC=false and configure real test credentials.
+    """
+    configured = os.environ.get("PUBLIC_DEMO_SYNTHETIC")
+    if configured is None:
+        return _public_demo_read_only()
+    return configured.lower() == "true"
+
+
+def _customer_profile(customer_id: str) -> dict[str, Any]:
+    profile = {"member_id": customer_id, **KNOWN_CUSTOMERS[customer_id]}
+    if _public_demo_synthetic():
+        profile["system"] = "mock_app"
+    return profile
 
 
 def _rate_limit_for_path(path: str) -> tuple[int, int]:
@@ -274,9 +295,21 @@ def readyz():
         count = len(list_capabilities())
         for system in SYSTEMS.values():
             Policy.load(system.policy_path)
+        if _public_demo_synthetic():
+            from urllib.request import urlopen
+
+            with urlopen("http://127.0.0.1:5000/healthz", timeout=2) as response:
+                if response.status != 200:
+                    raise RuntimeError("synthetic bank is not healthy")
     except Exception as exc:  # noqa: BLE001
         return jsonify({"status": "not_ready", "error": str(exc)}), 503
-    return jsonify({"status": "ready", "capabilities": count})
+    return jsonify({
+        "status": "ready",
+        "capabilities": count,
+        "public_demo_read_only": _public_demo_read_only(),
+        "synthetic_backend": _public_demo_synthetic(),
+        "revision": os.environ.get("RENDER_GIT_COMMIT", "local")[:12],
+    })
 
 
 def new_gate(system_key: str) -> PolicyGate:
@@ -767,41 +800,58 @@ _HOME_CAPABILITIES: dict[str, dict[str, str]] = {
 
 def _load_customer_home(customer_id: str) -> dict[str, Any]:
     """Fetch the logged-in member's name and a few real account cards via
-    real deterministic replay (not a shortcut/mock) -- each capability call
-    is launched concurrently (own browser session, own thread) since they
-    are independent, then awaited together, so the page takes roughly as
-    long as the slowest single call rather than the sum of all of them."""
-    system_key = KNOWN_CUSTOMERS[customer_id]["system"]
+    deterministic browser replay. The hosted synthetic demo runs them one at
+    a time to keep Chromium memory bounded on a small instance; private
+    deployments retain the faster concurrent behavior."""
+    profile = _customer_profile(customer_id)
+    system_key = profile["system"]
+    backend_member_id = profile["member_id"]
     cfg = _HOME_CAPABILITIES[system_key]
-    jobs: list[tuple[str, Any]] = []
+    specifications: list[tuple[str, Capability | None, dict[str, str]]] = []
 
     name_cap = get_capability(cfg["name_capability_id"], system_key)
-    if name_cap is not None:
-        try:
-            params = _bind_system_credentials(system_key, name_cap, {"member_id": customer_id})
-            jobs.append(("name", start_replay(system_key, name_cap, params, confirm_risky=False, headed=False)))
-        except (ParamError, RuntimeError):
-            jobs.append(("name", None))
+    specifications.append(("name", name_cap, {"member_id": backend_member_id}))
 
     balance_cap = get_capability(cfg["balance_capability_id"], system_key)
-    account_ids = KNOWN_CUSTOMERS.get(customer_id, {}).get("accounts", [])
+    account_ids = profile.get("accounts", [])
     for account_id in account_ids:
-        if balance_cap is None:
-            jobs.append((account_id, None))
-            continue
-        try:
-            params = _bind_system_credentials(
-                system_key, balance_cap,
-                {"member_id": customer_id, cfg["account_param"]: account_id},
-            )
-            jobs.append((account_id, start_replay(system_key, balance_cap, params, confirm_risky=False, headed=False)))
-        except (ParamError, RuntimeError):
-            jobs.append((account_id, None))
+        specifications.append((
+            account_id,
+            balance_cap,
+            {"member_id": backend_member_id, cfg["account_param"]: account_id},
+        ))
 
-    outcomes = {
-        key: (_await_result(state.run_id, timeout_s=60.0) if state else {"status": "error"})
-        for key, state in jobs
-    }
+    def launch(capability: Capability | None, raw_params: dict[str, str]):
+        if capability is None:
+            return None
+        try:
+            params = _bind_system_credentials(system_key, capability, raw_params)
+            return start_replay(
+                system_key, capability, params, confirm_risky=False, headed=False
+            )
+        except (ParamError, RuntimeError):
+            return None
+
+    outcomes: dict[str, dict[str, Any]] = {}
+    if _public_demo_synthetic():
+        for key, capability, raw_params in specifications:
+            state = launch(capability, raw_params)
+            outcomes[key] = (
+                _await_result(state.run_id, timeout_s=60.0)
+                if state else {"status": "error"}
+            )
+    else:
+        jobs = [
+            (key, launch(capability, raw_params))
+            for key, capability, raw_params in specifications
+        ]
+        outcomes = {
+            key: (
+                _await_result(state.run_id, timeout_s=60.0)
+                if state else {"status": "error"}
+            )
+            for key, state in jobs
+        }
 
     member_name = None
     name_result = (outcomes.get("name") or {}).get("result") or {}
@@ -844,6 +894,20 @@ def _plain_language_reply(capability_id: str, outcome: dict) -> str:
     r_status = result.get("status")
     if r_status == "success":
         outs = result.get("outputs") or {}
+        if capability_id == "mock_member_balance":
+            return (
+                f"Your account balance is {outs.get('account_balance', 'unavailable')} "
+                f"and its status is {outs.get('account_status', 'unavailable')}."
+            )
+        if capability_id == "mock_member_inquiry":
+            return f"The name on your account is {outs.get('member_name', 'unavailable')}."
+        if capability_id == "mock_transaction_history":
+            return (
+                "Your most recent transaction is "
+                f"{outs.get('txn_date', 'date unavailable')}: "
+                f"{outs.get('txn_description', 'description unavailable')} "
+                f"({outs.get('txn_amount', 'amount unavailable')})."
+            )
         return f"Done. {capability_id} succeeded: " + ", ".join(f"{k}={v}" for k, v in outs.items())
     if r_status == "business_outcome":
         bo = result.get("business_outcome") or {}
@@ -855,6 +919,115 @@ def _plain_language_reply(capability_id: str, outcome: dict) -> str:
             f"expected {f.get('expected')!r}, saw {f.get('observed')!r}. Evidence saved for review."
         )
     return f"'{capability_id}' finished with status: {r_status}"
+
+
+def _public_demo_route(
+    message: str, customer_id: str, profile: dict[str, Any]
+) -> dict[str, Any]:
+    """Small, auditable router for the public demo's read-only surface.
+
+    It deliberately recognizes only the handful of safe demo intents. The
+    private product path still uses the LLM tool router over the full approved
+    catalog; browser execution remains deterministic in both modes.
+    """
+    normalized = " ".join(message.lower().split())
+    accounts = [str(value) for value in profile.get("accounts", [])]
+
+    referenced_members = set(re.findall(r"\b\d{5,6}\b", normalized))
+    other_members = {
+        member_id for member_id in referenced_members
+        if member_id in KNOWN_CUSTOMERS and member_id != customer_id
+    }
+    if other_members:
+        return {
+            "reply": (
+                "For your security, I can only access the member account in "
+                "your current session. Nothing was executed."
+            ),
+            "status": 403,
+        }
+
+    if any(word in normalized for word in ("capabilities", "capability", "what can you", "services")):
+        return {
+            "reply": (
+                "In this read-only public demo I can:\n"
+                "• check the balance and status of your accounts\n"
+                "• show your most recent transaction\n"
+                "• look up the name on your member record\n\n"
+                "Transfers, contact updates, card controls, bill pay, loans, "
+                "holds, and account closure are approved catalog capabilities, "
+                "but writes are disabled on the public site."
+            ),
+            "status": 200,
+        }
+
+    if any(phrase in normalized for phrase in ("talk to a person", "human", "employee", "representative")):
+        return {
+            "reply": (
+                "A bank employee can inspect the complete run history and "
+                "evidence in the Operations Console. This public demo does not "
+                "create a real support ticket; no account action was taken."
+            ),
+            "status": 200,
+        }
+
+    requested_account = next(
+        (account for account in accounts if account.lower() in normalized),
+        None,
+    )
+    typed_account = re.search(r"\b\d{6}-(?:[a-z0-9]+)-?\d*\b", normalized)
+    if typed_account is not None:
+        requested_account = typed_account.group(0).upper()
+    selected_account = requested_account or (accounts[0] if accounts else None)
+
+    if any(phrase in normalized for phrase in ("transaction", "recent activity", "history")):
+        if selected_account is None:
+            return {"reply": "Please provide an account ID.", "status": 400}
+        return {
+            "capability_id": "mock_transaction_history",
+            "input": {"account_no": selected_account},
+        }
+
+    if "balance" in normalized or "account status" in normalized:
+        if selected_account is None:
+            return {"reply": "Please provide an account ID.", "status": 400}
+        return {
+            "capability_id": "mock_member_balance",
+            "input": {"account_no": selected_account},
+        }
+
+    if any(phrase in normalized for phrase in ("my name", "name on", "who am i", "look up member", "member information")):
+        return {"capability_id": "mock_member_inquiry", "input": {}}
+
+    write_intents = (
+        (("transfer", "send money", "move money"), "mock_transfer_funds"),
+        (("update", "change address", "change phone", "contact info"), "mock_update_contact_info"),
+        (("lock card", "unlock card", "card control"), "mock_lock_card"),
+        (("close account",), "mock_close_account"),
+        (("loan",), "mock_loan_application"),
+        (("bill pay", "pay bill"), "mock_bill_pay"),
+        (("place hold", "account hold"), "mock_place_hold"),
+    )
+    for phrases, capability_id in write_intents:
+        if any(phrase in normalized for phrase in phrases):
+            return {"capability_id": capability_id, "input": {}}
+
+    if "open" in normalized and ("share" in normalized or "account" in normalized):
+        return {
+            "reply": (
+                "Opening an account is a write action and is disabled on this "
+                "public demo. Nothing was executed."
+            ),
+            "status": 403,
+        }
+
+    return {
+        "reply": (
+            "I can safely help with balances, recent transactions, the name on "
+            "your member record, or the approved capability list. Nothing was executed."
+        ),
+        "status": 200,
+    }
 
 
 @app.post("/api/chat")
@@ -873,9 +1046,8 @@ def api_chat():
     if not message:
         return jsonify({"error": "empty message"}), 400
 
-    import anthropic
-
-    system_key = KNOWN_CUSTOMERS[customer_id]["system"]
+    profile = _customer_profile(customer_id)
+    system_key = profile["system"]
 
     # member_id is never offered to the routing model and never accepted
     # from the request below -- it is always the logged-in session's own
@@ -883,67 +1055,76 @@ def api_chat():
     # account, never another member's, regardless of what they type. The
     # tool list is also scoped to just this customer's own backend system
     # -- a mock_app member's chat never even sees MERIDIAN CORE capabilities.
-    tools = _catalog_tools(system_key, hide_member_id=True)
-    if not tools:
-        return jsonify({"reply": "No capabilities are recorded yet."})
+    if _public_demo_synthetic():
+        routed = _public_demo_route(message, customer_id, profile)
+        if "reply" in routed:
+            return jsonify({"reply": routed["reply"]}), int(routed.get("status", 200))
+        capability_id = str(routed["capability_id"])
+        supplied = {k: str(v) for k, v in routed.get("input", {}).items()}
+    else:
+        import anthropic
 
-    # Defense in depth: legacy credentials are server-bound and excluded from
-    # tool schemas; also scrub password-shaped text a customer typed anyway.
-    routed_message = re.sub(
-        r"(?i)(password\s*(?:is|=|:)?\s*)\S+",
-        r"\1[REDACTED]",
-        message,
-    )
+        tools = _catalog_tools(system_key, hide_member_id=True)
+        if not tools:
+            return jsonify({"reply": "No capabilities are recorded yet."})
 
-    def _route():
-        client = anthropic.Anthropic()
-        return client.messages.create(
-            model=os.environ.get("CUA_MODEL", "claude-sonnet-4-5"),
-            max_tokens=1024,
-            tools=tools,
-            messages=[{
-                "role": "user",
-                "content": (
-                    "You are a routing layer over a fixed set of deterministic "
-                    "capabilities for the customer's own account. Select one "
-                    "capability only when all of its required customer inputs are "
-                    "present. Never invent values. If information is missing, "
-                    "explain what the customer must provide without making a tool "
-                    "call.\n\n"
-                    f"Request: {routed_message}"
-                ),
-            }],
+        # Defense in depth: legacy credentials are server-bound and excluded
+        # from tool schemas; scrub password-shaped text typed by a customer.
+        routed_message = re.sub(
+            r"(?i)(password\s*(?:is|=|:)?\s*)\S+",
+            r"\1[REDACTED]",
+            message,
         )
 
-    try:
-        resp = ROUTER_BREAKER.call(_route)
-    except CircuitOpen:
-        return jsonify(
-            {
-                "reply": (
-                    "The assistant is temporarily unavailable. Your request was "
-                    "not executed; please try again or contact a bank employee."
-                )
-            }
-        ), 503
-    except Exception as exc:  # noqa: BLE001
-        _json_log("router_error", error_type=exc.__class__.__name__)
-        return jsonify(
-            {
-                "reply": (
-                    "I could not safely understand that request. Nothing was "
-                    "executed; please try again or contact a bank employee."
-                )
-            }
-        ), 503
+        def _route():
+            client = anthropic.Anthropic()
+            return client.messages.create(
+                model=os.environ.get("CUA_MODEL", "claude-sonnet-4-5"),
+                max_tokens=1024,
+                tools=tools,
+                messages=[{
+                    "role": "user",
+                    "content": (
+                        "You are a routing layer over a fixed set of deterministic "
+                        "capabilities for the customer's own account. Select one "
+                        "capability only when all of its required customer inputs "
+                        "are present. Never invent values. If information is "
+                        "missing, explain what the customer must provide without "
+                        "making a tool call.\n\n"
+                        f"Request: {routed_message}"
+                    ),
+                }],
+            )
 
-    tool_use = next((b for b in resp.content if b.type == "tool_use"), None)
-    if tool_use is None:
-        text = "".join(b.text for b in resp.content if b.type == "text")
-        return jsonify({"reply": text or "I couldn't map that to a known capability."})
+        try:
+            resp = ROUTER_BREAKER.call(_route)
+        except CircuitOpen:
+            return jsonify(
+                {
+                    "reply": (
+                        "The assistant is temporarily unavailable. Your request was "
+                        "not executed; please try again or contact a bank employee."
+                    )
+                }
+            ), 503
+        except Exception as exc:  # noqa: BLE001
+            _json_log("router_error", error_type=exc.__class__.__name__)
+            return jsonify(
+                {
+                    "reply": (
+                        "I could not safely understand that request. Nothing was "
+                        "executed; please try again or contact a bank employee."
+                    )
+                }
+            ), 503
 
-    capability_id = tool_use.name
-    supplied = {k: str(v) for k, v in (tool_use.input or {}).items()}
+        tool_use = next((b for b in resp.content if b.type == "tool_use"), None)
+        if tool_use is None:
+            text = "".join(b.text for b in resp.content if b.type == "text")
+            return jsonify({"reply": text or "I couldn't map that to a known capability."})
+
+        capability_id = tool_use.name
+        supplied = {k: str(v) for k, v in (tool_use.input or {}).items()}
     cap = get_capability(capability_id, system_key)
     if cap is None:
         return jsonify({"reply": f"Routed to unknown capability '{capability_id}'."})
@@ -965,7 +1146,7 @@ def api_chat():
     # an option, and this overwrites/ignores anything supplied anyway.
     supplied.pop("member_id", None)
     if any(p.name == "member_id" for p in cap.inputs):
-        supplied["member_id"] = customer_id
+        supplied["member_id"] = str(profile["member_id"])
 
     try:
         params = _bind_system_credentials(system_key, cap, supplied)
@@ -1109,6 +1290,7 @@ def customer_home():
     return render_template(
         "customer_home.html",
         public_demo_read_only=_public_demo_read_only(),
+        public_demo_synthetic=_public_demo_synthetic(),
         member_id=customer_id,
         member_name=profile["member_name"],
         accounts=profile["accounts"],

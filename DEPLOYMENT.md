@@ -10,14 +10,14 @@ static/serverless site hosting is not sufficient for the replay worker.
 
 The Blueprint sets `PUBLIC_DEMO_READ_ONLY=true`. Keep it enabled: this public
 submission surface deliberately does not pretend to have bank SSO/JWT and will
-reject write capabilities and employee commands. Use only target-provided
-synthetic/test credentials. Never put production bank credentials in this
-deployment.
+reject write capabilities and employee commands. It also sets
+`PUBLIC_DEMO_SYNTHETIC=true`, starts the bundled synthetic legacy bank inside
+the container, and uses an auditable deterministic router for the supported
+read-only chat intents. The public deployment therefore needs no LLM key and
+no private bank credentials.
 
-For a private live-read demo, configure these values in the hosting provider's
-secret manager:
-
-Configure these only in the hosting provider's secret manager:
+For a separate private live-bank demo, set `PUBLIC_DEMO_SYNTHETIC=false` and
+configure these values only in the hosting provider's secret manager:
 
 - `ANTHROPIC_API_KEY`
 - `MERIDIAN_OPERATOR_ID`
@@ -33,32 +33,20 @@ demo convention, not a secret to configure — it's the same identity pair
 `MERIDIAN_OPERATOR_ID`/`MERIDIAN_SUPERVISOR_ID` name, hardcoded for the demo
 rather than pulled from an env var.
 
-**Known gap: the mock_app backend is not reachable in this deployment.**
-The container's `CMD` only starts `meridian_service.app`; `mock_app.app`
-(the self-hosted second backend, members `20001`-`20003`) is not started
-alongside it, so those capabilities and that catalog's automation calls will
-fail on a deployed instance even though they work locally when both
-processes are running. Only the MERIDIAN CORE backend (the 5 real members)
-is reachable in a Render/Docker deployment as configured today. Making both
-work would mean either running `mock_app.app` as a second process in the
-same container (`supervisord` or similar) or as a second Render service on
-its own internal URL.
-
 ### Render
 
 1. Push the submission branch to GitHub.
 2. In Render, create a new Blueprint and select this repository.
 3. Render reads `render.yaml` and builds `Dockerfile`.
-4. Enter only synthetic/test values for the five prompted secrets.
-5. Wait until `/healthz` reports healthy.
-6. Open `/customer` for the customer assistant and `/` for the employee
+4. Wait until `/readyz` reports ready with `synthetic_backend: true`.
+5. Open `/customer` for the customer assistant and `/` for the employee
    console (viewable read-only by anyone; sign in at `/employee/login` for
    approve/deny/resume/abort — those still fail closed under
    `PUBLIC_DEMO_READ_ONLY=true` regardless of login).
 
-The free plan is adequate for catalog/UI review but may be memory-constrained
-for Chromium. Select a container with at least 2 GB RAM for reliable live
-browser replay.
+The public build runs home-page browser reads sequentially to bound peak
+Chromium memory on a small instance. Use separate replay workers and at least
+2 GB RAM per worker for sustained or concurrent production traffic.
 
 ### Local container
 
