@@ -3,228 +3,774 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MERIDIAN CORE — Operations Console</title>
+<title>MERIDIAN — Operations Console</title>
 <style>
-  :root { color-scheme: dark; --bg:#07111f; --panel:#0d1b2a; --line:#1d344a; --ink:#edf6ff; --muted:#91a5b8; --cyan:#43c6db; --green:#3ddc97; --amber:#ffca6a; --red:#ff7474; }
+  :root {
+    color-scheme: dark;
+    --bg:#060f1c; --surface-1:#0b1826; --surface-2:#0f2033; --surface-3:#132840;
+    --line:#1c3349; --line-strong:#25415c;
+    --ink:#eaf2fb; --muted:#8fa4b8; --faint:#5d7488;
+    --teal:#2dd4c8; --teal-bg:rgba(45,212,200,.13); --teal-line:#1f5c56;
+    --amber:#f5b94d; --amber-bg:rgba(245,185,77,.14); --amber-line:#6b5324;
+    --red:#f26161; --red-bg:rgba(242,97,97,.14); --red-line:#6e2f2f;
+    --green:#3ddc97; --green-bg:rgba(61,220,151,.13); --green-line:#215f45;
+    --focus: 0 0 0 3px rgba(45,212,200,.45);
+  }
   * { box-sizing:border-box; }
-  body { margin:0; background:linear-gradient(145deg,#06101d,#0a1625 55%,#081421); color:var(--ink); font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; min-height:100vh; }
-  header { height:66px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; border-bottom:1px solid var(--line); background:rgba(7,17,31,.92); position:sticky; top:0; z-index:3; }
-  .brand { display:flex; align-items:center; gap:11px; font-weight:750; letter-spacing:.03em; }
-  .mark { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; color:#04101a; background:linear-gradient(135deg,var(--cyan),var(--green)); font-weight:900; }
-  .subbrand { color:var(--muted); font-weight:500; margin-left:5px; }
-  header nav { display:flex; align-items:center; gap:16px; }
-  a { color:var(--cyan); text-decoration:none; }
-  .env { border:1px solid #725d27; color:var(--amber); background:#2b2415; padding:4px 9px; border-radius:999px; font-size:11px; font-weight:700; }
-  .who { border:1px solid #205768; color:var(--cyan); background:#102b35; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-  .shots { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-  .shots figure { margin:0; width:158px; }
-  .shots img { width:100%; border:1px solid var(--line); border-radius:8px; cursor:zoom-in; display:block; background:#fff; }
-  .shots figcaption { font-size:10.5px; color:var(--muted); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  #lightbox { position:fixed; inset:0; background:rgba(3,9,17,.9); display:none; place-items:center; z-index:20; cursor:zoom-out; padding:30px; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:var(--teal); }
+  button, input, select { font:inherit; color:inherit; }
+  :focus-visible { outline:none; box-shadow:var(--focus); border-radius:6px; }
+
+  header { position:sticky; top:0; z-index:30; height:60px; display:flex; align-items:center; justify-content:space-between; padding:0 22px; background:rgba(9,18,30,.96); backdrop-filter:blur(6px); border-bottom:1px solid var(--line); }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:.01em; }
+  .brand .mark { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:linear-gradient(135deg,var(--teal),var(--green)); color:#04141c; font-weight:900; font-size:13px; }
+  .brand .sub { color:var(--muted); font-weight:500; margin-left:2px; }
+  nav.top { display:flex; align-items:center; gap:14px; font-size:13px; }
+  .pill { padding:4px 11px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:.02em; border:1px solid; }
+  .pill-amber { color:var(--amber); background:var(--amber-bg); border-color:var(--amber-line); }
+  .pill-teal { color:var(--teal); background:var(--teal-bg); border-color:var(--teal-line); }
+  nav.top a { text-decoration:none; color:var(--muted); }
+  nav.top a:hover { color:var(--ink); }
+  nav.top a.cta { color:var(--teal); }
+
+  main { max-width:1360px; margin:0 auto; padding:26px 22px 70px; }
+  .page-head { display:flex; justify-content:space-between; align-items:flex-end; gap:20px; margin-bottom:22px; flex-wrap:wrap; }
+  h1 { font-size:22px; margin:0 0 4px; letter-spacing:-.01em; }
+  .page-head p { margin:0; color:var(--muted); font-size:13px; max-width:640px; }
+  .freshness { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:12px; white-space:nowrap; }
+  .freshness .dot { width:7px; height:7px; border-radius:50%; background:var(--green); }
+  .freshness.stale .dot { background:var(--amber); }
+  .freshness button { background:none; border:1px solid var(--line); color:var(--muted); border-radius:7px; padding:3px 9px; cursor:pointer; font-size:11.5px; }
+  .freshness button:hover { border-color:var(--line-strong); color:var(--ink); }
+
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:22px; }
+  .stat { background:var(--surface-1); border:1px solid var(--line); border-radius:12px; padding:15px 17px; text-align:left; }
+  .stat .n { display:block; font-size:26px; font-weight:700; letter-spacing:-.02em; margin-top:4px; }
+  .stat .l { color:var(--muted); font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+  .stat.hot { border-color:var(--amber-line); background:linear-gradient(180deg,var(--amber-bg),var(--surface-1) 70%); }
+  .stat.hot .n { color:var(--amber); }
+  .stat.bad .n { color:var(--red); }
+  .stat.good .n { color:var(--green); }
+
+  section.panel { background:var(--surface-1); border:1px solid var(--line); border-radius:13px; overflow:hidden; margin-bottom:16px; }
+  .panel-head { padding:14px 18px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .panel-head h2 { margin:0; font-size:13.5px; text-transform:uppercase; letter-spacing:.07em; color:#c3d3e2; display:flex; align-items:center; gap:8px; }
+  .panel-head .hint { color:var(--muted); font-size:12px; font-weight:500; text-transform:none; letter-spacing:0; }
+  .queue-panel { border-color:var(--amber-line); }
+  .queue-panel .panel-head { background:linear-gradient(180deg,var(--amber-bg),transparent); }
+
+  .split { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); gap:16px; align-items:start; }
+
+  /* -- controls -- */
+  .controls { display:flex; gap:8px; flex-wrap:wrap; padding:12px 18px; border-bottom:1px solid var(--line); }
+  .controls input[type=search], .controls select { background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:7px 10px; font-size:12.5px; color:var(--ink); }
+  .controls input[type=search] { flex:1 1 160px; min-width:120px; }
+  .controls input[type=search]::placeholder { color:var(--faint); }
+  .controls select { min-width:0; }
+
+  /* -- intervention queue -- */
+  .iv-list { padding:4px 0; }
+  .iv-row { display:grid; grid-template-columns:auto 1fr auto; gap:14px; align-items:start; padding:14px 18px; border-bottom:1px solid rgba(28,51,73,.7); }
+  .iv-row:last-child { border-bottom:0; }
+  .iv-badge { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; background:var(--amber-bg); border:1px solid var(--amber-line); color:var(--amber); font-weight:800; font-size:13px; flex:none; }
+  .iv-title { font-weight:700; font-size:13.5px; }
+  .iv-meta { color:var(--muted); font-size:12px; margin-top:3px; }
+  .iv-why { margin-top:7px; font-size:12.5px; color:#d6e3ee; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .iv-actions { display:flex; flex-direction:column; gap:6px; align-items:flex-end; }
+  .iv-wait { font-size:11.5px; color:var(--amber); font-weight:700; white-space:nowrap; }
+
+  /* -- buttons -- */
+  .btn { border:1px solid var(--line-strong); background:var(--surface-2); color:var(--ink); border-radius:8px; padding:7px 13px; cursor:pointer; font-weight:700; font-size:12.5px; white-space:nowrap; }
+  .btn:hover { border-color:var(--teal); }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .btn.sm { padding:5px 10px; font-size:11.5px; }
+  .btn.approve { background:var(--green-bg); border-color:var(--green-line); color:var(--green); }
+  .btn.deny, .btn.abort { background:var(--red-bg); border-color:var(--red-line); color:var(--red); }
+  .btn.resume { background:var(--teal-bg); border-color:var(--teal-line); color:var(--teal); }
+  .btn.ghost { background:transparent; }
+  .actions-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* -- badges -- */
+  .badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:999px; font-size:10.5px; font-weight:700; letter-spacing:.02em; border:1px solid; white-space:nowrap; }
+  .b-teal { color:var(--teal); background:var(--teal-bg); border-color:var(--teal-line); }
+  .b-amber { color:var(--amber); background:var(--amber-bg); border-color:var(--amber-line); }
+  .b-red { color:var(--red); background:var(--red-bg); border-color:var(--red-line); }
+  .b-green { color:var(--green); background:var(--green-bg); border-color:var(--green-line); }
+  .b-gray { color:var(--muted); background:var(--surface-2); border-color:var(--line); }
+
+  /* -- run table -- */
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead th { text-align:left; padding:9px 14px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--surface-1); }
+  tbody tr { cursor:pointer; }
+  tbody tr:hover { background:var(--surface-2); }
+  tbody tr:focus-visible { outline:2px solid var(--teal); outline-offset:-2px; }
+  tbody td { padding:11px 14px; border-bottom:1px solid rgba(28,51,73,.55); vertical-align:middle; }
+  td.mono { font:12px ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted); }
+  .run-table-wrap { max-height:520px; overflow:auto; }
+
+  /* -- capability cards -- */
+  .cap-list { padding:10px; display:flex; flex-direction:column; gap:8px; max-height:640px; overflow:auto; }
+  .cap-card { background:var(--surface-2); border:1px solid var(--line); border-radius:11px; padding:13px 14px; }
+  .cap-top { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .cap-name { font-weight:700; font-size:13.5px; }
+  .cap-cat { color:var(--muted); font-size:11px; margin-top:2px; }
+  .cap-desc { color:#cfe0ee; font-size:12.5px; margin:9px 0; line-height:1.5; }
+  .cap-badges { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .cap-inputs { margin-top:9px; font-size:12px; color:var(--muted); }
+  .cap-inputs b { color:#b9cbdb; font-weight:600; }
+  details.tech { margin-top:10px; border-top:1px solid var(--line); padding-top:8px; }
+  details.tech summary { cursor:pointer; color:var(--muted); font-size:11.5px; font-weight:600; }
+  details.tech summary:hover { color:var(--ink); }
+  .tech-sig { margin-top:7px; font:11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--teal); background:var(--surface-1); border:1px solid var(--line); border-radius:7px; padding:8px 10px; overflow-wrap:anywhere; }
+  .tech-id { color:var(--faint); font-size:11px; margin-top:5px; }
+
+  /* -- states -- */
+  .empty, .loading, .apierror { padding:34px 18px; text-align:center; color:var(--muted); }
+  .empty .big { font-size:22px; margin-bottom:6px; }
+  .apierror { color:var(--red); }
+  .apierror button { margin-top:10px; }
+  .skel { background:linear-gradient(90deg,var(--surface-2) 25%,var(--surface-3) 37%,var(--surface-2) 63%); background-size:400% 100%; animation:skel 1.4s ease infinite; border-radius:8px; }
+  @keyframes skel { 0%{background-position:100% 0} 100%{background-position:0 0} }
+  .skel-row { height:46px; margin:10px 14px; border-radius:8px; }
+  .no-permission { padding:11px 14px; background:var(--surface-2); border:1px dashed var(--line-strong); border-radius:9px; color:var(--muted); font-size:12px; margin:10px 14px; }
+  .no-permission a { font-weight:700; }
+
+  /* -- drawer -- */
+  #drawerBackdrop { position:fixed; inset:0; background:rgba(3,8,15,.6); z-index:39; display:none; }
+  #drawerBackdrop.open { display:block; }
+  #drawer { position:fixed; top:0; right:0; bottom:0; width:min(720px,100vw); background:var(--surface-1); border-left:1px solid var(--line); z-index:40; transform:translateX(100%); transition:transform .18s ease; display:flex; flex-direction:column; }
+  #drawer.open { transform:translateX(0); }
+  .drawer-head { padding:16px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:flex-start; gap:12px; }
+  .drawer-head h2 { margin:0 0 4px; font-size:15px; }
+  .drawer-head .ref { color:var(--muted); font-size:11.5px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; display:flex; align-items:center; gap:6px; }
+  .drawer-close { background:none; border:1px solid var(--line); color:var(--muted); border-radius:7px; width:30px; height:30px; cursor:pointer; font-size:15px; flex:none; }
+  .drawer-close:hover { color:var(--ink); border-color:var(--line-strong); }
+  .copybtn { background:none; border:1px solid var(--line); color:var(--muted); border-radius:6px; padding:1px 7px; cursor:pointer; font-size:10.5px; }
+  .copybtn:hover { color:var(--teal); border-color:var(--teal-line); }
+  .tabs { display:flex; gap:2px; padding:0 20px; border-bottom:1px solid var(--line); }
+  .tab { background:none; border:0; border-bottom:2px solid transparent; color:var(--muted); padding:11px 12px; cursor:pointer; font-weight:700; font-size:12.5px; }
+  .tab[aria-selected=true] { color:var(--teal); border-bottom-color:var(--teal); }
+  .tabpanel { flex:1; overflow:auto; padding:18px 20px; }
+  .tabpanel[hidden] { display:none; }
+  .kv { display:grid; grid-template-columns:150px 1fr; gap:8px 12px; font-size:12.5px; margin-bottom:16px; }
+  .kv dt { color:var(--muted); }
+  .kv dd { margin:0; }
+  .plain { background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:13px 14px; font-size:13px; line-height:1.6; margin-bottom:16px; }
+  .tl-item { display:grid; grid-template-columns:20px 1fr; gap:10px; padding:9px 0; border-bottom:1px solid rgba(28,51,73,.5); }
+  .tl-dot { width:9px; height:9px; border-radius:50%; margin-top:5px; background:var(--faint); }
+  .tl-dot.ok { background:var(--green); } .tl-dot.warn { background:var(--amber); } .tl-dot.err { background:var(--red); } .tl-dot.human { background:var(--teal); }
+  .tl-title { font-weight:600; font-size:12.5px; }
+  .tl-meta { color:var(--muted); font-size:11px; margin-top:2px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  pre.raw { white-space:pre-wrap; overflow-wrap:anywhere; font:11.5px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:#c7d7e6; background:var(--surface-2); border:1px solid var(--line); border-radius:9px; padding:12px; max-height:420px; overflow:auto; }
+  .shots { display:flex; flex-wrap:wrap; gap:10px; }
+  .shots figure { margin:0; width:150px; }
+  .shots img { width:100%; border:1px solid var(--line); border-radius:7px; cursor:zoom-in; display:block; background:#fff; }
+  .shots figcaption { font-size:10px; color:var(--muted); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* -- confirm modal -- */
+  #modalBackdrop { position:fixed; inset:0; background:rgba(3,8,15,.7); z-index:50; display:none; place-items:center; padding:20px; }
+  #modalBackdrop.open { display:grid; }
+  .modal { width:100%; max-width:440px; background:var(--surface-1); border:1px solid var(--line-strong); border-radius:13px; padding:22px; }
+  .modal h2 { margin:0 0 8px; font-size:16px; }
+  .modal p { margin:0 0 8px; color:#d6e3ee; font-size:13px; line-height:1.55; }
+  .modal .warn { color:var(--amber); font-size:12.5px; margin-top:10px; padding:9px 11px; background:var(--amber-bg); border:1px solid var(--amber-line); border-radius:8px; }
+  .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:18px; }
+
+  #lightbox { position:fixed; inset:0; background:rgba(3,8,15,.92); z-index:60; display:none; place-items:center; padding:30px; cursor:zoom-out; }
   #lightbox.open { display:grid; }
-  #lightbox img { max-width:100%; max-height:92vh; border-radius:10px; border:1px solid var(--line); background:#fff; }
-  .shots-note { color:var(--muted); font-size:12px; margin-top:12px; }
-  main { max-width:1400px; margin:0 auto; padding:24px 28px 50px; }
-  .titlebar { display:flex; justify-content:space-between; gap:20px; align-items:flex-end; margin-bottom:20px; }
-  h1 { font-size:25px; margin:0 0 4px; letter-spacing:-.025em; }
-  .muted { color:var(--muted); }
-  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }
-  .stat, section { background:rgba(13,27,42,.9); border:1px solid var(--line); border-radius:13px; }
-  .stat { padding:14px 16px; }
-  .stat strong { display:block; font-size:23px; margin-top:3px; }
-  .stat span { color:var(--muted); font-size:12px; }
-  .layout { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(330px,.75fr); gap:16px; align-items:start; }
-  section { overflow:hidden; }
-  .section-head { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
-  h2 { margin:0; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:#b7c8d8; }
-  .list { padding:5px 0; }
-  .row { padding:12px 16px; border-bottom:1px solid rgba(29,52,74,.72); cursor:pointer; display:flex; justify-content:space-between; gap:18px; }
-  .row:last-child { border-bottom:0; }
-  .row:hover { background:#10243a; }
-  .row-main { min-width:0; }
-  .row-title { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .row-meta { color:var(--muted); font-size:12px; margin-top:3px; }
-  .badge { align-self:center; white-space:nowrap; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; border:1px solid transparent; }
-  .success,.done { color:#8bf0bd; background:#102d24; border-color:#20543f; }
-  .business_outcome { color:#ffe19b; background:#322914; border-color:#6b5422; }
-  .hard_failure,.error { color:#ffabab; background:#361b24; border-color:#713040; }
-  .awaiting_human { color:#ffe19b; background:#352813; border-color:#796026; }
-  .running { color:#93e6f2; background:#102b35; border-color:#205768; }
-  .empty { padding:25px 16px; text-align:center; color:var(--muted); }
-  .intervention { margin-bottom:16px; border-color:#6c5423; }
-  .intervention .section-head { background:#2b2213; }
-  .cap { padding:11px 16px; border-bottom:1px solid rgba(29,52,74,.72); }
-  .cap:last-child { border:0; }
-  .signature { color:var(--cyan); font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; overflow-wrap:anywhere; }
-  .detail { margin-top:16px; }
-  .detail-grid { display:grid; grid-template-columns:1fr 1fr; }
-  .detail-pane { padding:16px; min-height:180px; }
-  .detail-pane + .detail-pane { border-left:1px solid var(--line); }
-  pre { margin:10px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; color:#c7d7e6; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; max-height:370px; overflow:auto; }
-  .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
-  button { border:1px solid var(--line); background:#12273d; color:var(--ink); border-radius:8px; padding:8px 12px; cursor:pointer; font-weight:700; }
-  button:hover { border-color:var(--cyan); }
-  button.approve { background:#123a2d; border-color:#287154; }
-  button.deny { background:#3a1c25; border-color:#743143; }
-  @media(max-width:850px) { .stats{grid-template-columns:1fr 1fr}.layout{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}.detail-pane+.detail-pane{border-left:0;border-top:1px solid var(--line)}.subbrand{display:none} }
+  #lightbox img { max-width:100%; max-height:92vh; border-radius:10px; background:#fff; }
+
+  .sr-only { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  @media(max-width:980px) {
+    .split { grid-template-columns:1fr; }
+    .stats { grid-template-columns:1fr 1fr; }
+    #drawer { width:100vw; }
+  }
+  @media(max-width:640px) {
+    .stats { grid-template-columns:1fr 1fr; }
+    header .brand .sub { display:none; }
+    .iv-row { grid-template-columns:auto 1fr; }
+    .iv-actions { grid-column:1/-1; flex-direction:row; }
+  }
 </style>
 </head>
 <body>
 <header>
-  <div class="brand"><div class="mark">M</div><span>MERIDIAN <span class="subbrand">Operations Console</span></span></div>
-  <nav>
-    <span class="env">{% if public_demo_read_only %}READ-ONLY PUBLIC DEMO{% else %}PRIVATE SUBMISSION DEMO{% endif %}</span>
+  <div class="brand"><div class="mark">M</div><span>MERIDIAN <span class="sub">Operations Console</span></span></div>
+  <nav class="top" aria-label="Console navigation">
+    <span class="pill {{ 'pill-amber' if public_demo_read_only else 'pill-teal' }}">{{ 'READ-ONLY PUBLIC DEMO' if public_demo_read_only else 'PRIVATE SUBMISSION DEMO' }}</span>
     {% if employee_id %}
-      <span class="who">{{ employee_id }} · {{ employee_role }}</span>
+      <span class="pill pill-teal">{{ employee_id }} · {{ employee_role }}</span>
       <a href="/employee/logout">Log out</a>
     {% else %}
-      <a href="/employee/login">Employee sign in</a>
+      <a href="/employee/login" class="cta">Employee sign in</a>
     {% endif %}
     <a href="/customer">Customer site →</a>
   </nav>
 </header>
+
 <main>
-  <div class="titlebar">
-    <div><h1>Automation operations</h1><div class="muted">Review interventions, capability health, and the complete execution trail.{% if public_demo_read_only %} Employee actions are disabled on this public instance.{% endif %}</div></div>
-    <div class="muted" id="lastUpdated">Loading…</div>
-  </div>
-  <div class="stats">
-    <div class="stat"><span>Running</span><strong id="runningCount">0</strong></div>
-    <div class="stat"><span>Waiting for employee</span><strong id="waitingCount">0</strong></div>
-    <div class="stat"><span>Completed</span><strong id="completedCount">0</strong></div>
-    <div class="stat"><span>Needs investigation</span><strong id="failedCount">0</strong></div>
-  </div>
-  <section class="intervention">
-    <div class="section-head"><h2>Human intervention queue</h2><span class="muted">Highest priority first</span></div>
-    <div class="list" id="interventions"><div class="empty">No requests waiting for an employee.</div></div>
-  </section>
-  <div class="layout">
-    <section>
-      <div class="section-head"><h2>Run history</h2><span class="muted">Latest 50</span></div>
-      <div class="list" id="runs"><div class="empty">Loading runs…</div></div>
-    </section>
-    <section>
-      <div class="section-head"><h2>Approved capability catalog</h2><span class="muted" id="capCount"></span></div>
-      <div class="list" id="catalog"><div class="empty">Loading capabilities…</div></div>
-    </section>
-  </div>
-  <section class="detail" id="detailWrap" hidden>
-    <div class="section-head"><h2>Run investigation</h2><span class="muted" id="detailId"></span></div>
-    <div class="detail-grid">
-      <div class="detail-pane"><strong>Current state</strong><div class="actions" id="actions"></div><pre id="detail"></pre></div>
-      <div class="detail-pane"><strong>Correlated event log</strong><pre id="events"></pre></div>
+  <div class="page-head">
+    <div>
+      <h1>Automation operations</h1>
+      <p>Review interventions, capability health, and the complete execution trail across both backend systems.{% if public_demo_read_only %} Write actions and employee commands are disabled on this public instance.{% endif %}</p>
     </div>
-    <div class="detail-pane" id="shotsPane" hidden>
-      <strong>Visual trail</strong>
-      <div class="shots-note" id="shotsNote"></div>
-      <div class="shots" id="shots"></div>
-    </div>
+    <div class="freshness" id="freshness"><span class="dot" aria-hidden="true"></span><span id="freshnessText">Loading…</span><button id="refreshBtn" type="button">Refresh</button></div>
+  </div>
+
+  <div class="stats" role="group" aria-label="Run summary counts">
+    <div class="stat"><span class="l">Running</span><span class="n" id="statRunning">–</span></div>
+    <div class="stat hot"><span class="l">Waiting for employee</span><span class="n" id="statWaiting">–</span></div>
+    <div class="stat good"><span class="l">Completed</span><span class="n" id="statCompleted">–</span></div>
+    <div class="stat bad"><span class="l">Needs investigation</span><span class="n" id="statFailed">–</span></div>
+  </div>
+
+  <section class="panel queue-panel" aria-labelledby="ivHeading">
+    <div class="panel-head"><h2 id="ivHeading">Human intervention queue</h2><span class="hint">Oldest waiting first</span></div>
+    <div id="ivRoot"><div class="skel skel-row"></div></div>
   </section>
+
+  <div class="split">
+    <section class="panel" aria-labelledby="runsHeading">
+      <div class="panel-head"><h2 id="runsHeading">Run history</h2><span class="hint">Latest 50</span></div>
+      <div class="controls">
+        <input type="search" id="runSearch" placeholder="Search run ID or capability…" aria-label="Search runs">
+        <select id="runStatusFilter" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="success">Success</option>
+          <option value="business_outcome">Business outcome</option>
+          <option value="awaiting_human">Waiting for employee</option>
+          <option value="hard_failure">Hard failure</option>
+          <option value="error">System error</option>
+          <option value="running">Running</option>
+        </select>
+      </div>
+      <div class="run-table-wrap"><div id="runsRoot"><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div></div>
+    </section>
+
+    <section class="panel" aria-labelledby="catHeading">
+      <div class="panel-head"><h2 id="catHeading">Approved capability catalog</h2><span class="hint" id="capCount"></span></div>
+      <div class="controls">
+        <input type="search" id="capSearch" placeholder="Search capabilities…" aria-label="Search capabilities">
+        <select id="capCategoryFilter" aria-label="Filter by category"><option value="">All categories</option></select>
+        <select id="capRiskFilter" aria-label="Filter by risk">
+          <option value="">All risk</option><option value="Low">Low risk</option><option value="High">High risk</option>
+        </select>
+        <select id="capOpFilter" aria-label="Filter by operation type">
+          <option value="">Read-only + write</option><option value="Read-only">Read-only only</option><option value="Write">Write only</option>
+        </select>
+      </div>
+      <div class="cap-list" id="capRoot"><div class="skel skel-row"></div><div class="skel skel-row"></div></div>
+    </section>
+  </div>
 </main>
+
+<div id="drawerBackdrop"></div>
+<aside id="drawer" aria-hidden="true" aria-labelledby="drawerTitle" role="dialog">
+  <div class="drawer-head">
+    <div>
+      <h2 id="drawerTitle">Run investigation</h2>
+      <div class="ref">Run <span id="drawerRunId"></span> <button class="copybtn" id="copyRunId" type="button">Copy</button></div>
+    </div>
+    <button class="drawer-close" id="drawerCloseBtn" aria-label="Close run investigation">✕</button>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Run investigation views">
+    <button class="tab" id="tabBtnOverview" role="tab" aria-selected="true" aria-controls="tabOverview">Overview</button>
+    <button class="tab" id="tabBtnTimeline" role="tab" aria-selected="false" aria-controls="tabTimeline">Timeline</button>
+    <button class="tab" id="tabBtnEvidence" role="tab" aria-selected="false" aria-controls="tabEvidence">Evidence</button>
+    <button class="tab" id="tabBtnLogs" role="tab" aria-selected="false" aria-controls="tabLogs">Technical logs</button>
+  </div>
+  <div class="tabpanel" id="tabOverview" role="tabpanel" aria-labelledby="tabBtnOverview"></div>
+  <div class="tabpanel" id="tabTimeline" role="tabpanel" aria-labelledby="tabBtnTimeline" hidden></div>
+  <div class="tabpanel" id="tabEvidence" role="tabpanel" aria-labelledby="tabBtnEvidence" hidden></div>
+  <div class="tabpanel" id="tabLogs" role="tabpanel" aria-labelledby="tabBtnLogs" hidden></div>
+</aside>
+
+<div id="modalBackdrop">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalBody">
+    <h2 id="modalTitle"></h2>
+    <p id="modalBody"></p>
+    <div class="modal-actions">
+      <button class="btn ghost" id="modalCancel" type="button">Cancel</button>
+      <button class="btn" id="modalConfirm" type="button"></button>
+    </div>
+  </div>
+</div>
+
 <div id="lightbox" role="dialog" aria-label="Enlarged screenshot"><img id="lightboxImg" alt="Enlarged run screenshot"></div>
+
 <script>
-const el = id => document.getElementById(id);
+'use strict';
+const $ = id => document.getElementById(id);
 const employeeLoggedIn = {{ 'true' if employee_id else 'false' }};
-el('lightbox').onclick = () => el('lightbox').classList.remove('open');
-function openShot(src) { el('lightboxImg').src = src; el('lightbox').classList.add('open'); }
-function badge(status) {
-  const node = document.createElement('span');
-  node.className = 'badge ' + status;
-  node.textContent = status.replaceAll('_', ' ');
+const publicReadOnly = {{ 'true' if public_demo_read_only else 'false' }};
+
+let capsById = new Map();
+let capsList = [];
+let runsList = [];
+let lastRunsJSON = '';
+let lastCapsJSON = '';
+let pollFailures = 0;
+
+/* ---------------------------------------------------------- utilities */
+
+function el(tag, props, ...children) {
+  const node = document.createElement(tag);
+  if (props) for (const [k, v] of Object.entries(props)) {
+    if (k === 'class') node.className = v;
+    else if (k === 'text') node.textContent = v;
+    else if (k.startsWith('on') && typeof v === 'function') node.addEventListener(k.slice(2), v);
+    else if (k.startsWith('aria-') || k === 'role' || k === 'tabindex') node.setAttribute(k, v);
+    else node[k] = v;
+  }
+  for (const c of children) if (c != null) node.append(c);
   return node;
 }
-function empty(text) {
-  const node = document.createElement('div'); node.className = 'empty'; node.textContent = text; return node;
+function fmtTime(ts) {
+  if (!ts) return '—';
+  const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 }
-function runStatus(run) { return (run.result && run.result.status) || run.status; }
-function runRow(run) {
-  const row = document.createElement('div'); row.className = 'row'; row.tabIndex = 0;
-  const main = document.createElement('div'); main.className = 'row-main';
-  const title = document.createElement('div'); title.className = 'row-title'; title.textContent = run.capability_id;
-  const meta = document.createElement('div'); meta.className = 'row-meta'; meta.textContent = run.run_id;
-  main.append(title, meta); row.append(main, badge(runStatus(run)));
-  row.onclick = () => showDetail(run.run_id); row.onkeydown = e => { if (e.key === 'Enter') showDetail(run.run_id); };
-  return row;
+function relTime(ts) {
+  if (!ts) return '';
+  const d = typeof ts === 'number' ? new Date(ts * 1000) : new Date(ts);
+  const secs = Math.max(0, Math.round((Date.now() - d.getTime()) / 1000));
+  if (secs < 60) return secs + 's';
+  if (secs < 3600) return Math.round(secs / 60) + 'm';
+  return Math.round(secs / 3600) + 'h';
 }
+async function getJSON(url, opts) {
+  const response = await fetch(url, opts);
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const err = new Error(body.message || body.error || ('HTTP ' + response.status));
+    err.status = response.status; err.body = body;
+    throw err;
+  }
+  return response.json();
+}
+
+/* -------------------------------------------- capability presentation
+   Everything below derives ONLY from what /api/capabilities already
+   returns (capability_id, system, name, signature, description, inputs,
+   outputs, business_outcomes, requires_confirmation). Category and risk
+   tier are presentation-layer groupings computed from that real data --
+   not additional backend fields -- so a capability's actual behavior
+   (what's read-only, what needs approval) always matches what's shown. */
+
+function categoryFor(cap) {
+  const id = cap.capability_id;
+  if (/balance|inquiry|history/.test(id)) return 'Account information';
+  if (/transfer|bill_pay|billpay|loan/.test(id)) return 'Money movement';
+  if (/update|contact|sign_on/.test(id)) return 'Member servicing';
+  if (/hold|lock|card|close/.test(id)) return 'Account controls';
+  if (/open_new_share|open_sub_account|open_share/.test(id)) return 'Money movement';
+  return 'Other';
+}
+function operationType(cap) { return cap.requires_confirmation ? 'Write' : 'Read-only'; }
+function approvalFor(cap) { return cap.requires_confirmation ? 'Employee approval' : 'None'; }
+function riskFor(cap) { return cap.requires_confirmation ? 'High' : 'Low'; }
+function oneSentence(desc) {
+  const stop = desc.indexOf('\n\n');
+  const head = stop > -1 ? desc.slice(0, stop) : desc;
+  const m = head.match(/^[^.]*\./);
+  return (m ? m[0] : head).trim();
+}
+function riskBadge(risk) {
+  return el('span', { class: 'badge ' + (risk === 'High' ? 'b-red' : 'b-teal') }, (risk === 'High' ? '⚠ ' : '✓ ') + risk + ' risk');
+}
+function opBadge(op) {
+  return el('span', { class: 'badge ' + (op === 'Write' ? 'b-amber' : 'b-gray') }, (op === 'Write' ? '✎ ' : '👁 ') + op);
+}
+function approvalBadge(a) {
+  return el('span', { class: 'badge ' + (a === 'None' ? 'b-gray' : 'b-green') }, a === 'None' ? 'No approval needed' : a);
+}
+
+function renderCatalog() {
+  const root = $('capRoot'); root.replaceChildren();
+  const q = $('capSearch').value.trim().toLowerCase();
+  const cat = $('capCategoryFilter').value;
+  const risk = $('capRiskFilter').value;
+  const op = $('capOpFilter').value;
+  const filtered = capsList.filter(c => {
+    if (cat && categoryFor(c) !== cat) return false;
+    if (risk && riskFor(c) !== risk) return false;
+    if (op && operationType(c) !== op) return false;
+    if (q && !(c.name.toLowerCase().includes(q) || c.capability_id.toLowerCase().includes(q) || c.description.toLowerCase().includes(q))) return false;
+    return true;
+  });
+  $('capCount').textContent = filtered.length + ' of ' + capsList.length + ' published';
+  if (!capsList.length) { root.append(el('div', { class: 'empty' }, el('div', { class: 'big' }, '📋'), 'No capabilities published yet.')); return; }
+  if (!filtered.length) { root.append(el('div', { class: 'empty' }, 'No capabilities match these filters.')); return; }
+  // High-risk (write) capabilities surface first -- an employee scanning
+  // the catalog sees what can move money or change state before read-only ones.
+  const sorted = [...filtered].sort((a, b) => (b.requires_confirmation - a.requires_confirmation) || a.name.localeCompare(b.name));
+  for (const c of sorted) {
+    const risk = riskFor(c), op = operationType(c), approval = approvalFor(c);
+    const card = el('div', { class: 'cap-card' },
+      el('div', { class: 'cap-top' },
+        el('div', {}, el('div', { class: 'cap-name' }, c.name), el('div', { class: 'cap-cat' }, categoryFor(c) + ' · ' + c.system.replace('_', ' '))),
+      ),
+      el('div', { class: 'cap-desc' }, oneSentence(c.description)),
+      el('div', { class: 'cap-badges' }, opBadge(op), riskBadge(risk), approvalBadge(approval), el('span', { class: 'badge b-green' }, '● Published')),
+    );
+    if (c.inputs.length) {
+      const list = c.inputs.map(i => i.name.replace(/_/g, ' ') + ' — ' + i.description).join('; ');
+      card.append(el('div', { class: 'cap-inputs' }, el('b', {}, 'Needs from customer: '), list));
+    }
+    const details = el('details', { class: 'tech' }, el('summary', { text: 'Technical details' }));
+    details.append(
+      el('div', { class: 'tech-sig', text: c.signature }),
+      el('div', { class: 'tech-id', text: 'capability_id: ' + c.capability_id }),
+    );
+    card.append(details);
+    root.append(card);
+  }
+}
+
+function populateCategoryFilter() {
+  const sel = $('capCategoryFilter');
+  const cats = [...new Set(capsList.map(categoryFor))].sort();
+  for (const c of cats) sel.append(el('option', { value: c, text: c }));
+}
+
 async function loadCatalog() {
-  const response = await fetch('/api/capabilities'); const caps = await response.json();
-  const root = el('catalog'); root.replaceChildren(); el('capCount').textContent = caps.length + ' published';
-  if (!caps.length) return root.append(empty('No capabilities published.'));
-  for (const cap of caps) {
-    const node = document.createElement('div'); node.className = 'cap';
-    const sig = document.createElement('div'); sig.className = 'signature'; sig.textContent = cap.signature;
-    const desc = document.createElement('div'); desc.className = 'row-meta'; desc.textContent = cap.name + (cap.requires_confirmation ? ' · confirmation required' : ' · read-only');
-    node.append(sig, desc); root.append(node);
+  let data;
+  try { data = await getJSON('/api/capabilities'); }
+  catch (e) { $('capRoot').replaceChildren(apiErrorNode(e, loadCatalog)); return; }
+  const json = JSON.stringify(data);
+  if (json === lastCapsJSON) return;
+  lastCapsJSON = json;
+  capsList = data; capsById = new Map(data.map(c => [c.capability_id, c]));
+  populateCategoryFilter();
+  renderCatalog();
+}
+
+function apiErrorNode(err, retry) {
+  const box = el('div', { class: 'apierror' }, el('div', { class: 'big' }, '⚠'), el('div', { text: 'Could not load: ' + err.message }));
+  box.append(el('div', {}, el('button', { class: 'btn sm', text: 'Retry', onclick: retry })));
+  return box;
+}
+
+/* --------------------------------------------------------------- runs */
+
+function runStatus(run) { return (run.result && run.result.status) || run.status; }
+function statusMeta(status) {
+  return ({
+    running: { label: 'Running', cls: 'b-teal' },
+    awaiting_human: { label: 'Waiting for employee', cls: 'b-amber' },
+    error: { label: 'System error', cls: 'b-red' },
+    success: { label: 'Success', cls: 'b-green' },
+    business_outcome: { label: 'Business outcome', cls: 'b-teal' },
+    hard_failure: { label: 'Hard failure', cls: 'b-red' },
+  })[status] || { label: status, cls: 'b-gray' };
+}
+function friendlyCapName(id) { return (capsById.get(id) || {}).name || id; }
+
+function renderRuns() {
+  const root = $('runsRoot'); root.replaceChildren();
+  const q = $('runSearch').value.trim().toLowerCase();
+  const statusFilter = $('runStatusFilter').value;
+  const filtered = runsList.filter(r => {
+    if (statusFilter && runStatus(r) !== statusFilter) return false;
+    if (q && !(r.run_id.toLowerCase().includes(q) || r.capability_id.toLowerCase().includes(q) || friendlyCapName(r.capability_id).toLowerCase().includes(q))) return false;
+    return true;
+  });
+  if (!runsList.length) { root.append(el('div', { class: 'empty' }, el('div', { class: 'big' }, '🗒'), 'No runs yet. Use the customer assistant to start one.')); return; }
+  if (!filtered.length) { root.append(el('div', { class: 'empty' }, 'No runs match these filters.')); return; }
+  const table = el('table');
+  table.append(el('thead', {}, el('tr', {}, el('th', { scope: 'col', text: 'Capability' }), el('th', { scope: 'col', text: 'Status' }), el('th', { scope: 'col', text: 'Reference' }))));
+  const tbody = el('tbody');
+  for (const r of filtered) {
+    const meta = statusMeta(runStatus(r));
+    const row = el('tr', { tabindex: '0', role: 'button', 'aria-label': 'Open investigation for run ' + r.run_id, onclick: () => openDrawer(r.run_id), onkeydown: e => { if (e.key === 'Enter') openDrawer(r.run_id); } },
+      el('td', { text: friendlyCapName(r.capability_id) }),
+      el('td', {}, el('span', { class: 'badge ' + meta.cls, text: meta.label })),
+      el('td', { class: 'mono', text: r.run_id.replace(/^replay-/, '').slice(0, 20) + '…' }),
+    );
+    tbody.append(row);
+  }
+  table.append(tbody);
+  root.append(table);
+}
+
+function renderInterventionQueue() {
+  const root = $('ivRoot'); root.replaceChildren();
+  const waiting = runsList.filter(r => r.status === 'awaiting_human')
+    .sort((a, b) => new Date((a.intervention || {}).created_at || 0) - new Date((b.intervention || {}).created_at || 0));
+  if (!waiting.length) { root.append(el('div', { class: 'empty' }, '✓ No employee decisions are currently required.')); return; }
+  const list = el('div', { class: 'iv-list' });
+  for (const r of waiting) {
+    const iv = r.intervention || {};
+    const reasonLabel = ({
+      risky_action_confirmation: 'Needs sign-off before an irreversible action',
+      agent_blocked: 'Discovery agent could not proceed',
+      replay_hard_failure: 'Unexpected state during replay',
+      max_steps_exceeded: 'Did not converge within the step budget',
+    })[iv.reason] || 'Needs a decision';
+    const row = el('div', { class: 'iv-row' },
+      el('div', { class: 'iv-badge', 'aria-hidden': 'true' }, '!'),
+      el('div', {},
+        el('div', { class: 'iv-title', text: friendlyCapName(r.capability_id) }),
+        el('div', { class: 'iv-meta', text: reasonLabel + ' · ' + r.run_id.slice(-14) }),
+        el('div', { class: 'iv-why', text: iv.message || 'No further detail recorded.' }),
+      ),
+      el('div', { class: 'iv-actions' },
+        el('div', { class: 'iv-wait', text: 'Waiting ' + (relTime(iv.created_at) || '—') }),
+        el('button', { class: 'btn sm', text: 'Review', onclick: () => openDrawer(r.run_id) }),
+      ),
+    );
+    list.append(row);
+  }
+  root.append(list);
+  if (!employeeLoggedIn && !publicReadOnly) {
+    root.append(el('div', { class: 'no-permission' }, 'Viewing read-only. ', el('a', { href: '/employee/login', text: 'Sign in as an employee' }), ' to approve, deny, resume, or abort.'));
+  }
+  if (publicReadOnly) {
+    root.append(el('div', { class: 'no-permission' }, 'Employee actions are disabled on this public read-only instance.'));
   }
 }
-async function loadRuns() {
-  const response = await fetch('/api/runs'); const runs = await response.json();
-  const root = el('runs'); root.replaceChildren();
-  if (!runs.length) root.append(empty('No runs yet. Use the customer assistant to start one.'));
-  runs.forEach(run => root.append(runRow(run)));
-  const waiting = runs.filter(r => r.status === 'awaiting_human');
-  const queue = el('interventions'); queue.replaceChildren();
-  if (!waiting.length) queue.append(empty('No requests waiting for an employee.'));
-  waiting.forEach(run => queue.append(runRow(run)));
-  el('runningCount').textContent = runs.filter(r => r.status === 'running').length;
-  el('waitingCount').textContent = waiting.length;
-  el('completedCount').textContent = runs.filter(r => runStatus(r) === 'success' || runStatus(r) === 'business_outcome').length;
-  el('failedCount').textContent = runs.filter(r => runStatus(r) === 'hard_failure' || r.status === 'error').length;
-  el('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+function computeStats() {
+  const waiting = runsList.filter(r => r.status === 'awaiting_human').length;
+  $('statRunning').textContent = runsList.filter(r => r.status === 'running').length;
+  $('statWaiting').textContent = waiting;
+  $('statCompleted').textContent = runsList.filter(r => ['success', 'business_outcome'].includes(runStatus(r))).length;
+  $('statFailed').textContent = runsList.filter(r => ['hard_failure', 'error'].includes(runStatus(r))).length;
 }
-async function command(runId, action) {
-  if ((action === 'approve' || action === 'deny') && !confirm(action === 'approve' ? 'Approve this banking action?' : 'Deny this banking action?')) return;
-  await fetch('/api/runs/' + encodeURIComponent(runId) + '/command', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({command:action}) });
-  setTimeout(() => { loadRuns(); showDetail(runId); }, 500);
+
+async function loadRuns({ silent } = {}) {
+  let data;
+  try { data = await getJSON('/api/runs'); pollFailures = 0; }
+  catch (e) {
+    pollFailures++;
+    if (!silent) $('runsRoot').replaceChildren(apiErrorNode(e, () => loadRuns()));
+    setFreshness(true);
+    return;
+  }
+  const json = JSON.stringify(data);
+  if (json === lastRunsJSON) { setFreshness(false); return; }
+  lastRunsJSON = json;
+  runsList = data;
+  computeStats(); renderInterventionQueue(); renderRuns();
+  setFreshness(false);
+  if (drawerOpenRunId) refreshDrawerIfOpen();
 }
-async function showDetail(runId) {
-  const [runResponse, eventResponse, mediaResponse] = await Promise.all([
-    fetch('/api/runs/' + encodeURIComponent(runId)),
-    fetch('/api/evidence/' + encodeURIComponent(runId) + '/events'),
-    fetch('/api/evidence/' + encodeURIComponent(runId) + '/media')
-  ]);
-  const data = await runResponse.json(); const events = await eventResponse.json();
-  const media = await mediaResponse.json();
-  el('detailWrap').hidden = false; el('detailId').textContent = runId;
-  el('detail').textContent = JSON.stringify(data, null, 2);
-  el('events').textContent = events.length ? events.map(e => JSON.stringify(e)).join('\n') : 'No events recorded yet.';
-  const actions = el('actions'); actions.replaceChildren();
-  if (data.status === 'awaiting_human') {
-    if (employeeLoggedIn) {
-      for (const action of ['approve','deny','resume','abort']) {
-        const button = document.createElement('button'); button.textContent = action; button.className = action; button.onclick = () => command(runId, action); actions.append(button);
-      }
+
+function setFreshness(stale) {
+  const box = $('freshness'); box.classList.toggle('stale', stale || pollFailures > 1);
+  $('freshnessText').textContent = stale ? 'Updates unavailable — last known data shown' : 'Updated ' + new Date().toLocaleTimeString();
+}
+
+/* ------------------------------------------------------------- drawer */
+
+let drawerOpenRunId = null;
+let drawerActiveTab = 'Overview';
+
+function openDrawer(runId) {
+  drawerOpenRunId = runId;
+  $('drawerRunId').textContent = runId;
+  $('drawer').classList.add('open'); $('drawer').setAttribute('aria-hidden', 'false');
+  $('drawerBackdrop').classList.add('open');
+  selectTab('Overview');
+  $('drawerCloseBtn').focus();
+  refreshDrawerIfOpen();
+}
+function closeDrawer() {
+  drawerOpenRunId = null;
+  $('drawer').classList.remove('open'); $('drawer').setAttribute('aria-hidden', 'true');
+  $('drawerBackdrop').classList.remove('open');
+}
+function selectTab(name) {
+  drawerActiveTab = name;
+  for (const t of ['Overview', 'Timeline', 'Evidence', 'Logs']) {
+    $('tabBtn' + t).setAttribute('aria-selected', String(t === name));
+    $('tab' + t).hidden = t !== name;
+  }
+}
+$('tabBtnOverview').onclick = () => selectTab('Overview');
+$('tabBtnTimeline').onclick = () => { selectTab('Timeline'); loadTimeline(); };
+$('tabBtnEvidence').onclick = () => { selectTab('Evidence'); loadEvidenceTab(); };
+$('tabBtnLogs').onclick = () => { selectTab('Logs'); loadLogsTab(); };
+$('drawerCloseBtn').onclick = closeDrawer;
+$('drawerBackdrop').onclick = closeDrawer;
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if ($('lightbox').classList.contains('open')) closeLightbox(); else if ($('modalBackdrop').classList.contains('open')) closeModal(); else closeDrawer(); } });
+$('copyRunId').onclick = () => navigator.clipboard.writeText(drawerOpenRunId || '');
+
+function plainLanguageSummary(run) {
+  const status = run.status, result = run.result || {};
+  if (status === 'awaiting_human') return 'This run paused and is waiting for an employee decision before it can continue.';
+  if (status === 'error') return 'This run could not complete: ' + (run.error || 'an unexpected error occurred') + '.';
+  if (result.status === 'success') {
+    const outs = Object.entries(result.outputs || {}).map(([k, v]) => k.replace(/_/g, ' ') + ': ' + v).join(', ');
+    return 'Completed successfully.' + (outs ? ' Result — ' + outs + '.' : '');
+  }
+  if (result.status === 'business_outcome') {
+    const bo = result.business_outcome || {};
+    return 'Completed and reported a normal business result: ' + (bo.description || bo.code) + '.';
+  }
+  if (result.status === 'hard_failure') {
+    const f = result.failure || {};
+    return 'Stopped at an unexpected state (step ' + f.step_id + '): expected ' + f.expected + ', observed ' + f.observed + '.';
+  }
+  return 'This run is still in progress.';
+}
+
+function renderOverview(run) {
+  const root = $('tabOverview'); root.replaceChildren();
+  const meta = statusMeta(runStatus(run));
+  root.append(
+    el('div', { class: 'plain', text: plainLanguageSummary(run) }),
+    el('dl', { class: 'kv' },
+      el('dt', { text: 'Capability' }), el('dd', { text: friendlyCapName(run.capability_id) }),
+      el('dt', { text: 'Status' }), el('dd', {}, el('span', { class: 'badge ' + meta.cls, text: meta.label })),
+      el('dt', { text: 'Run reference' }), el('dd', { class: 'mono', style: 'font-family:ui-monospace,monospace;font-size:12px', text: run.run_id }),
+      el('dt', { text: 'Evidence saved' }), el('dd', { text: run.evidence_available ? 'Yes' : 'No' }),
+    ),
+  );
+  if (run.status === 'awaiting_human') {
+    const wrap = el('div', { class: 'actions-row' });
+    if (employeeLoggedIn && !publicReadOnly) {
+      wrap.append(
+        el('button', { class: 'btn approve', text: 'Approve', onclick: () => confirmCommand(run, 'approve') }),
+        el('button', { class: 'btn deny', text: 'Deny', onclick: () => confirmCommand(run, 'deny') }),
+        el('button', { class: 'btn resume', text: 'Resume', onclick: () => confirmCommand(run, 'resume') }),
+        el('button', { class: 'btn abort', text: 'Abort', onclick: () => confirmCommand(run, 'abort') }),
+      );
     } else {
-      const note = document.createElement('a'); note.href = '/employee/login';
-      note.textContent = 'Employee sign in required to approve, deny, resume, or abort →';
-      actions.append(note);
+      wrap.append(el('div', { class: 'no-permission' }, publicReadOnly ? 'Employee actions are disabled on this public instance.' : el('span', {}, el('a', { href: '/employee/login', text: 'Sign in as an employee' }), ' to act on this run.')));
     }
+    root.append(wrap);
   }
-  const status = runStatus(data);
-  const shots = media.screenshots || [];
-  const hadHumanMoment = shots.some(n => /intervention|failure|operator/.test(n));
-  const needsVisualTrail = data.status === 'awaiting_human' || data.status === 'error' || status === 'hard_failure' || hadHumanMoment;
-  const pane = el('shotsPane'); const strip = el('shots'); strip.replaceChildren();
-  if (needsVisualTrail && media.screenshots && media.screenshots.length) {
-    pane.hidden = false;
-    el('shotsNote').textContent = 'What the operator screen showed, step by step — the last frames are where it stopped.';
-    for (const name of media.screenshots) {
-      const src = '/api/evidence/' + encodeURIComponent(runId) + '/file/screenshot/' + encodeURIComponent(name);
-      const fig = document.createElement('figure');
-      const img = document.createElement('img'); img.src = src; img.loading = 'lazy';
-      img.alt = 'Screenshot ' + name; img.onclick = () => openShot(src);
-      const cap = document.createElement('figcaption'); cap.textContent = name.replace(/^\d+_/, '').replace(/\.png$/, '');
-      fig.append(img, cap); strip.append(fig);
-    }
-  } else if (needsVisualTrail) {
-    pane.hidden = false;
-    el('shotsNote').textContent = 'No screenshots captured for this run.';
-  } else {
-    pane.hidden = true;
-  }
-  el('detailWrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
-loadCatalog(); loadRuns(); setInterval(loadRuns, 4000);
+
+const REASON_LABEL = {
+  risky_action_confirmation: 'Sign-off required for an irreversible action',
+  agent_blocked: 'Agent could not proceed',
+  replay_hard_failure: 'Unexpected state',
+  max_steps_exceeded: 'Step budget exceeded',
+};
+function eventDotClass(evt) {
+  if (evt.event === 'hard_failure' || evt.event === 'policy_blocked') return 'err';
+  if (evt.event === 'intervention_raised' || evt.event === 'human_action' || evt.event === 'handoff_started' || evt.event === 'handoff_ended') return 'human';
+  if (evt.event === 'locator_degraded' || evt.event === 'recovered') return 'warn';
+  if (evt.event === 'step_ok' || evt.event === 'run_succeeded' || evt.event === 'risky_approved') return 'ok';
+  return '';
+}
+function eventTitle(evt) {
+  const map = {
+    run_started: 'Run started', step_ok: 'Step completed: ' + (evt.step || ''),
+    business_outcome: 'Business outcome: ' + (evt.code || ''), recovered: 'Recovered via rule: ' + (evt.rule || ''),
+    locator_degraded: 'Locator drift detected on step ' + (evt.step || ''),
+    intervention_raised: 'Escalated to a human — ' + (REASON_LABEL[evt.reason] || evt.reason || ''),
+    handoff_started: 'Handoff started', human_action: 'Employee action: ' + (evt.command || ''),
+    handoff_ended: 'Handoff ended — ' + (evt.resolution || ''), risky_approved: 'Risky step approved',
+    risky_denied: 'Risky step denied', hard_failure: 'Hard failure on step ' + (evt.step || ''),
+    policy_blocked: 'Policy blocked an action', run_succeeded: 'Run succeeded',
+  };
+  return map[evt.event] || evt.event;
+}
+
+async function loadTimeline() {
+  const root = $('tabTimeline'); root.replaceChildren(el('div', { class: 'skel skel-row' }));
+  let events;
+  try { events = await getJSON('/api/evidence/' + encodeURIComponent(drawerOpenRunId) + '/events'); }
+  catch (e) { root.replaceChildren(apiErrorNode(e, loadTimeline)); return; }
+  root.replaceChildren();
+  if (!events.length) { root.append(el('div', { class: 'empty' }, 'No events recorded yet.')); return; }
+  for (const evt of events) {
+    root.append(el('div', { class: 'tl-item' },
+      el('div', { class: 'tl-dot ' + eventDotClass(evt) }),
+      el('div', {}, el('div', { class: 'tl-title', text: eventTitle(evt) }), el('div', { class: 'tl-meta', text: (evt.ts || '') + ' · ' + (evt.actor || '') })),
+    ));
+  }
+}
+
+function openLightbox(src) { $('lightboxImg').src = src; $('lightbox').classList.add('open'); }
+function closeLightbox() { $('lightbox').classList.remove('open'); }
+$('lightbox').onclick = closeLightbox;
+
+async function loadEvidenceTab() {
+  const root = $('tabEvidence'); root.replaceChildren(el('div', { class: 'skel skel-row' }));
+  let media;
+  try { media = await getJSON('/api/evidence/' + encodeURIComponent(drawerOpenRunId) + '/media'); }
+  catch (e) { root.replaceChildren(apiErrorNode(e, loadEvidenceTab)); return; }
+  root.replaceChildren();
+  if (!media.screenshots || !media.screenshots.length) { root.append(el('div', { class: 'empty' }, 'No screenshots captured for this run.')); return; }
+  root.append(el('p', { style: 'color:var(--muted);font-size:12px;margin:0 0 12px' }, 'What the operator screen showed, step by step — the last frame is where it stopped.'));
+  const strip = el('div', { class: 'shots' });
+  for (const name of media.screenshots) {
+    const src = '/api/evidence/' + encodeURIComponent(drawerOpenRunId) + '/file/screenshot/' + encodeURIComponent(name);
+    strip.append(el('figure', {},
+      el('img', { src, loading: 'lazy', alt: 'Screenshot ' + name, onclick: () => openLightbox(src) }),
+      el('figcaption', { text: name.replace(/^\d+_/, '').replace(/\.png$/, '') }),
+    ));
+  }
+  root.append(strip);
+}
+
+async function loadLogsTab() {
+  const root = $('tabLogs'); root.replaceChildren(el('div', { class: 'skel skel-row' }));
+  const [runResp, eventsResp] = await Promise.allSettled([
+    getJSON('/api/runs/' + encodeURIComponent(drawerOpenRunId)),
+    getJSON('/api/evidence/' + encodeURIComponent(drawerOpenRunId) + '/events'),
+  ]);
+  root.replaceChildren();
+  root.append(el('p', { style: 'color:var(--muted);font-size:11.5px;margin:0 0 6px' }, 'Current state'));
+  root.append(el('pre', { class: 'raw', text: runResp.status === 'fulfilled' ? JSON.stringify(runResp.value, null, 2) : 'Unavailable: ' + runResp.reason.message }));
+  root.append(el('p', { style: 'color:var(--muted);font-size:11.5px;margin:14px 0 6px' }, 'Correlated event log'));
+  root.append(el('pre', { class: 'raw', text: eventsResp.status === 'fulfilled' ? eventsResp.value.map(e => JSON.stringify(e)).join('\n') : 'Unavailable: ' + eventsResp.reason.message }));
+}
+
+function refreshDrawerIfOpen() {
+  const run = runsList.find(r => r.run_id === drawerOpenRunId);
+  if (!run) return;
+  renderOverview(run);
+  if (drawerActiveTab === 'Timeline') loadTimeline();
+  if (drawerActiveTab === 'Logs') loadLogsTab();
+}
+
+/* -------------------------------------------------------- confirm modal */
+
+function closeModal() { $('modalBackdrop').classList.remove('open'); }
+function confirmCommand(run, action) {
+  const capName = friendlyCapName(run.capability_id);
+  const copy = {
+    approve: { title: 'Approve ' + capName + '?', body: 'This lets the paused action complete — including any irreversible write to the target system. This cannot be undone once posted.', warn: true, label: 'Approve and continue', cls: 'approve' },
+    deny: { title: 'Deny ' + capName + '?', body: 'The run will stop here and report a denial. Nothing further will be attempted automatically.', label: 'Deny', cls: 'deny' },
+    resume: { title: 'Resume ' + capName + '?', body: 'Automation will continue from where it paused, re-checking the expected state first.', label: 'Resume', cls: 'resume' },
+    abort: { title: 'Abort ' + capName + '?', body: 'The run stops immediately and is marked as ended by an employee.', label: 'Abort run', cls: 'abort' },
+  }[action];
+  $('modalTitle').textContent = copy.title;
+  $('modalBody').textContent = copy.body;
+  const existingWarn = $('modalBackdrop').querySelector('.warn'); if (existingWarn) existingWarn.remove();
+  if (copy.warn) $('modalBody').insertAdjacentElement('afterend', el('div', { class: 'warn', text: '⚠ High-risk action — double check this is the correct run before approving.' }));
+  const confirmBtn = $('modalConfirm');
+  confirmBtn.textContent = copy.label;
+  confirmBtn.className = 'btn ' + copy.cls;
+  confirmBtn.onclick = async () => {
+    closeModal();
+    await getJSON('/api/runs/' + encodeURIComponent(run.run_id) + '/command', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ command: action }) }).catch(() => {});
+    setTimeout(() => loadRuns(), 500);
+  };
+  $('modalBackdrop').classList.add('open');
+  // Cancel is focused by default so an accidental Enter never approves.
+  $('modalCancel').focus();
+}
+$('modalCancel').onclick = closeModal;
+$('modalBackdrop').addEventListener('click', e => { if (e.target === $('modalBackdrop')) closeModal(); });
+
+/* --------------------------------------------------------------- wire up */
+
+for (const id of ['runSearch', 'runStatusFilter']) $(id).addEventListener('input', renderRuns);
+for (const id of ['capSearch', 'capCategoryFilter', 'capRiskFilter', 'capOpFilter']) $(id).addEventListener('input', renderCatalog);
+$('refreshBtn').onclick = () => { loadRuns(); loadCatalog(); };
+
+loadCatalog().then(loadRuns);
+setInterval(() => loadRuns({ silent: true }), 4000);
 </script>
 </body>
 </html>
