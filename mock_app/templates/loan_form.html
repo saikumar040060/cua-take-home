@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Loan Application</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+{% if errors %}
+<table cellpadding="2"><tr><td>
+<font color="red"><b>Please correct the following:</b></font><br>
+{% for e in errors %}<font color="red">! {{ e }}</font><br>{% endfor %}
+</td></tr></table>
+{% endif %}
+<form action="/member/{{ m.member_no }}/loan/apply" method="post">
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Purpose:</td><td>
+<select name="purpose">
+<option value="">-- select --</option>
+{% for p in purposes %}<option value="{{ p }}" {% if form.get('purpose') == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="r2"><td>Amount Requested:</td><td><input type="text" name="amount" size="10" value="{{ form.get('amount','') }}"> <font size="1">($500 - $75,000)</font></td></tr>
+<tr class="c1"><td colspan="2" align="right"><input type="submit" value="Submit Application"></td></tr>
+</table>
+</form>
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

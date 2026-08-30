@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3" color="#1d5f2a"><b>CHANGES SAVED</b></font>
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Phone</td><td>{{ m.phone }}</td></tr>
+<tr class="r2"><td>Address</td><td>{{ m.address }}</td></tr>
+</table>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

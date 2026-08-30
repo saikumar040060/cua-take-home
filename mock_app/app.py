@@ -31,7 +31,21 @@ import time
 
 from flask import Flask, redirect, render_template, request, session, url_for
 
-from mock_app.data import MEMBERS, VALID_PRODUCTS, create_sub_account
+from mock_app.data import (
+    MEMBERS,
+    VALID_HOLD_REASONS,
+    VALID_LOAN_PURPOSES,
+    VALID_PRODUCTS,
+    apply_loan,
+    close_account,
+    create_sub_account,
+    find_account,
+    pay_bill,
+    place_hold,
+    toggle_card,
+    transfer_funds,
+    update_contact,
+)
 
 app = Flask(__name__)
 app.secret_key = "mock-only-not-a-real-secret"
@@ -140,6 +154,211 @@ def subacct_create(member_no: str):
 def subacct_confirm(member_no: str, ref: str):
     member = MEMBERS.get(member_no)
     return render_template("subacct_confirm.html", m=member, ref=ref)
+
+
+@app.get("/member/<member_no>/transfer")
+def transfer_new(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    return render_template("transfer_form.html", m=member, errors=[], form={})
+
+
+@app.post("/member/<member_no>/transfer/execute")
+def transfer_execute(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    from_no = (request.form.get("from_acct") or "").strip()
+    to_no = (request.form.get("to_acct") or "").strip()
+    amount = (request.form.get("amount") or "").strip()
+    ok, result = transfer_funds(member, from_no, to_no, amount)
+    if not ok:
+        return render_template(
+            "transfer_form.html", m=member, errors=[result],
+            form={"from_acct": from_no, "to_acct": to_no, "amount": amount},
+        )
+    return redirect(url_for("transfer_confirm", member_no=member_no, ref=result))
+
+
+@app.get("/member/<member_no>/transfer/confirm/<ref>")
+def transfer_confirm(member_no: str, ref: str):
+    member = MEMBERS.get(member_no)
+    return render_template("transfer_confirm.html", m=member, ref=ref)
+
+
+@app.get("/member/<member_no>/update")
+def update_new(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    return render_template("update_form.html", m=member, errors=[])
+
+
+@app.post("/member/<member_no>/update/save")
+def update_save(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    phone = (request.form.get("phone") or "").strip()
+    address = (request.form.get("address") or "").strip()
+    if not phone and not address:
+        return render_template("update_form.html", m=member, errors=["Enter a phone number or address to update."])
+    update_contact(member, phone, address)
+    return redirect(url_for("update_confirm", member_no=member_no))
+
+
+@app.get("/member/<member_no>/update/confirm")
+def update_confirm(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    return render_template("update_confirm.html", m=member)
+
+
+@app.get("/member/<member_no>/accounts/<account_no>/close")
+def close_new(member_no: str, account_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    acct = find_account(member, account_no)
+    return render_template("close_form.html", m=member, acct=acct, errors=[])
+
+
+@app.post("/member/<member_no>/accounts/<account_no>/close/execute")
+def close_execute(member_no: str, account_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    ok, result = close_account(member, account_no)
+    acct = find_account(member, account_no)
+    if not ok:
+        return render_template("close_form.html", m=member, acct=acct, errors=[result])
+    return redirect(url_for("close_confirm", member_no=member_no, account_no=account_no))
+
+
+@app.get("/member/<member_no>/accounts/<account_no>/close/confirm")
+def close_confirm(member_no: str, account_no: str):
+    member = MEMBERS.get(member_no)
+    return render_template("close_confirm.html", m=member, account_no=account_no)
+
+
+@app.get("/member/<member_no>/cards")
+def cards_list(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    return render_template("cards.html", m=member)
+
+
+@app.post("/member/<member_no>/cards/<last4>/toggle")
+def cards_toggle(member_no: str, last4: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    toggle_card(member, last4)
+    return redirect(url_for("cards_list", member_no=member_no))
+
+
+@app.get("/member/<member_no>/loan/new")
+def loan_new(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    return render_template("loan_form.html", m=member, purposes=VALID_LOAN_PURPOSES, errors=[], form={})
+
+
+@app.post("/member/<member_no>/loan/apply")
+def loan_apply(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    purpose = (request.form.get("purpose") or "").strip()
+    amount = (request.form.get("amount") or "").strip()
+    ok, result = apply_loan(member, purpose, amount)
+    if not ok:
+        return render_template(
+            "loan_form.html", m=member, purposes=VALID_LOAN_PURPOSES, errors=[result],
+            form={"purpose": purpose, "amount": amount},
+        )
+    return redirect(url_for("loan_confirm", member_no=member_no, ref=result))
+
+
+@app.get("/member/<member_no>/loan/confirm/<ref>")
+def loan_confirm(member_no: str, ref: str):
+    member = MEMBERS.get(member_no)
+    return render_template("loan_confirm.html", m=member, ref=ref)
+
+
+@app.get("/member/<member_no>/billpay")
+def billpay_new(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    return render_template("billpay_form.html", m=member, errors=[], form={})
+
+
+@app.post("/member/<member_no>/billpay/pay")
+def billpay_pay(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    account_no = (request.form.get("account_no") or "").strip()
+    payee_id = (request.form.get("payee_id") or "").strip()
+    amount = (request.form.get("amount") or "").strip()
+    ok, result = pay_bill(member, account_no, payee_id, amount)
+    if not ok:
+        return render_template(
+            "billpay_form.html", m=member, errors=[result],
+            form={"account_no": account_no, "payee_id": payee_id, "amount": amount},
+        )
+    return redirect(url_for("billpay_confirm", member_no=member_no, ref=result))
+
+
+@app.get("/member/<member_no>/billpay/confirm/<ref>")
+def billpay_confirm(member_no: str, ref: str):
+    member = MEMBERS.get(member_no)
+    return render_template("billpay_confirm.html", m=member, ref=ref)
+
+
+@app.get("/member/<member_no>/accounts/<account_no>/history")
+def account_history(member_no: str, account_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    acct = find_account(member, account_no)
+    txns = member.transactions.get(account_no, [])
+    return render_template("history.html", m=member, acct=acct, txns=txns)
+
+
+@app.get("/member/<member_no>/hold")
+def hold_new(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    return render_template("hold_form.html", m=member, reasons=VALID_HOLD_REASONS, errors=[], form={})
+
+
+@app.post("/member/<member_no>/hold/place")
+def hold_place(member_no: str):
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return render_template("not_found.html", member_no=member_no)
+    account_no = (request.form.get("account_no") or "").strip()
+    reason = (request.form.get("reason") or "").strip()
+    ok, result = place_hold(member, account_no, reason)
+    if not ok:
+        return render_template(
+            "hold_form.html", m=member, reasons=VALID_HOLD_REASONS, errors=[result],
+            form={"account_no": account_no, "reason": reason},
+        )
+    return redirect(url_for("hold_confirm", member_no=member_no, ref=result))
+
+
+@app.get("/member/<member_no>/hold/confirm/<ref>")
+def hold_confirm(member_no: str, ref: str):
+    member = MEMBERS.get(member_no)
+    return render_template("hold_confirm.html", m=member, ref=ref)
 
 
 def main() -> None:

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Pay a Bill</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+{% if errors %}
+<table cellpadding="2"><tr><td>
+<font color="red"><b>Please correct the following:</b></font><br>
+{% for e in errors %}<font color="red">! {{ e }}</font><br>{% endfor %}
+</td></tr></table>
+{% endif %}
+{% if m.payees %}
+<form action="/member/{{ m.member_no }}/billpay/pay" method="post">
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>From Account:</td><td>
+<select name="account_no">
+<option value="">-- select --</option>
+{% for a in m.accounts %}<option value="{{ a.number }}" {% if form.get('account_no') == a.number %}selected{% endif %}>{{ a.number }} ({{ a.product }}, {{ a.balance }})</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="r2"><td>Payee:</td><td>
+<select name="payee_id">
+<option value="">-- select --</option>
+{% for p in m.payees %}<option value="{{ p.payee_id }}" {% if form.get('payee_id') == p.payee_id %}selected{% endif %}>{{ p.name }}</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="c1"><td>Amount:</td><td><input type="text" name="amount" size="10" value="{{ form.get('amount','') }}"></td></tr>
+<tr class="r2"><td colspan="2" align="right"><input type="submit" value="Submit Payment"></td></tr>
+</table>
+</form>
+{% else %}
+<p><font color="red">This member has no payees on file.</font></p>
+{% endif %}
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

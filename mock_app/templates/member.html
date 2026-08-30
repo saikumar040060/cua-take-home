@@ -13,15 +13,22 @@
 <br>
 <font size="2"><b>Accounts</b></font>
 <table class="tbl-a" cellpadding="2">
-<tr class="c1"><th>Acct No</th><th>Product</th><th>Balance</th><th>Opened</th></tr>
+<tr class="c1"><th>Acct No</th><th>Product</th><th>Balance</th><th>Opened</th><th>Status</th><th>History</th></tr>
 {% for a in m.accounts %}
-<tr class="{{ loop.cycle('r2','c1') }}"><td>{{ a.number }}</td><td>{{ a.product }}</td><td>{{ a.balance }}</td><td>{{ a.opened }}</td></tr>
+<tr class="{{ loop.cycle('r2','c1') }}"><td>{{ a.number }}</td><td>{{ a.product }}</td><td>{{ a.balance }}</td><td>{{ a.opened }}</td><td>{{ a.status }}</td><td><a href="/member/{{ m.member_no }}/accounts/{{ a.number }}/history">View</a></td></tr>
 {% endfor %}
 </table>
 <br>
 <table cellpadding="4"><tr>
 <td class="c1"><a href="/member/{{ m.member_no }}/subacct/new">Open Sub-Account</a></td>
-<td class="c1"><a href="/">New Lookup</a></td>
+<td class="c1"><a href="/member/{{ m.member_no }}/transfer">Transfer Funds</a></td>
+<td class="c1"><a href="/member/{{ m.member_no }}/update">Update Contact Info</a></td>
+<td class="c1"><a href="/member/{{ m.member_no }}/cards">Manage Cards</a></td>
+</tr><tr>
+<td class="r2"><a href="/member/{{ m.member_no }}/loan/new">Apply for Loan</a></td>
+<td class="r2"><a href="/member/{{ m.member_no }}/billpay">Pay a Bill</a></td>
+<td class="r2"><a href="/member/{{ m.member_no }}/hold">Place Account Hold</a></td>
+<td class="r2"><a href="/">New Lookup</a></td>
 </tr></table>
 </div>
 {% endblock %}

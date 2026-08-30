@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Transfer Funds</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+{% if errors %}
+<table cellpadding="2"><tr><td>
+<font color="red"><b>Please correct the following:</b></font><br>
+{% for e in errors %}<font color="red">! {{ e }}</font><br>{% endfor %}
+</td></tr></table>
+{% endif %}
+<form action="/member/{{ m.member_no }}/transfer/execute" method="post">
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>From Account:</td><td>
+<select name="from_acct">
+<option value="">-- select --</option>
+{% for a in m.accounts %}<option value="{{ a.number }}" {% if form.get('from_acct') == a.number %}selected{% endif %}>{{ a.number }} ({{ a.product }}, {{ a.balance }})</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="r2"><td>To Account:</td><td>
+<select name="to_acct">
+<option value="">-- select --</option>
+{% for a in m.accounts %}<option value="{{ a.number }}" {% if form.get('to_acct') == a.number %}selected{% endif %}>{{ a.number }} ({{ a.product }}, {{ a.balance }})</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="c1"><td>Amount:</td><td><input type="text" name="amount" size="10" value="{{ form.get('amount','') }}"></td></tr>
+<tr class="r2"><td colspan="2" align="right"><input type="submit" value="Post Transfer"></td></tr>
+</table>
+</form>
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3" color="#1d5f2a"><b>Hold Placed</b></font>
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Confirmation Ref</td><td><b>{{ ref }}</b></td></tr>
+<tr class="r2"><td>Member No</td><td>{{ m.member_no if m else '?' }}</td></tr>
+</table>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

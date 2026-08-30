@@ -68,9 +68,11 @@ def open_sub_account_script(member_id: str = "10023") -> list[Decision]:
             "ref": "e2", "reason": "run the member search",
             "success_text": "Member Profile",
         }),
-        # Member page: e1 = Open Sub-Account link, e2 = New Lookup link
+        # Member page: e1/e2 = per-account History links (member 10023 has 2
+        # accounts), e3 = Open Sub-Account link, followed by the other
+        # account-action links, then New Lookup.
         Decision(tool="click", args={
-            "ref": "e1", "reason": "start the sub-account flow",
+            "ref": "e3", "reason": "start the sub-account flow",
             "success_text": "Open Sub-Account",
         }),
         # Form: e1 = product select, e2 = nickname, e3 = deposit, e4 = submit

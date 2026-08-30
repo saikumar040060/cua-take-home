@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Update Contact Information</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+{% if errors %}
+<table cellpadding="2"><tr><td>
+<font color="red"><b>Please correct the following:</b></font><br>
+{% for e in errors %}<font color="red">! {{ e }}</font><br>{% endfor %}
+</td></tr></table>
+{% endif %}
+<form action="/member/{{ m.member_no }}/update/save" method="post">
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Phone:</td><td><input type="text" name="phone" size="20" value="{{ m.phone }}"></td></tr>
+<tr class="r2"><td>Address:</td><td><input type="text" name="address" size="40" value="{{ m.address }}"></td></tr>
+<tr class="c1"><td colspan="2" align="right"><input type="submit" value="Save Changes"></td></tr>
+</table>
+</form>
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

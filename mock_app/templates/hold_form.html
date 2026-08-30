@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Place Account Hold</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+<font size="1" color="#900"><b>RESTRICTED FUNCTION</b></font>
+{% if errors %}
+<table cellpadding="2"><tr><td>
+<font color="red"><b>Please correct the following:</b></font><br>
+{% for e in errors %}<font color="red">! {{ e }}</font><br>{% endfor %}
+</td></tr></table>
+{% endif %}
+<form action="/member/{{ m.member_no }}/hold/place" method="post">
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Account:</td><td>
+<select name="account_no">
+<option value="">-- select --</option>
+{% for a in m.accounts %}<option value="{{ a.number }}" {% if form.get('account_no') == a.number %}selected{% endif %}>{{ a.number }} ({{ a.product }}, {{ a.status }})</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="r2"><td>Reason:</td><td>
+<select name="reason">
+<option value="">-- select --</option>
+{% for r in reasons %}<option value="{{ r }}" {% if form.get('reason') == r %}selected{% endif %}>{{ r }}</option>{% endfor %}
+</select>
+</td></tr>
+<tr class="c1"><td colspan="2" align="right"><input type="submit" value="Place Hold"></td></tr>
+</table>
+</form>
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Manage Cards</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><th>Card No</th><th>Type</th><th>Status</th><th>Action</th></tr>
+{% for c in m.cards %}
+<tr class="{{ loop.cycle('r2','c1') }}">
+<td>{{ c.number_masked }}</td>
+<td>{{ c.kind }}</td>
+<td>{{ c.status }}</td>
+<td>
+<form action="/member/{{ m.member_no }}/cards/{{ c.number_masked[-4:] }}/toggle" method="post" style="display:inline">
+<input type="submit" value="{{ 'Lock Card' if c.status == 'ACTIVE' else 'Unlock Card' }}">
+</form>
+</td>
+</tr>
+{% else %}
+<tr><td colspan="4">No cards on file for this member.</td></tr>
+{% endfor %}
+</table>
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

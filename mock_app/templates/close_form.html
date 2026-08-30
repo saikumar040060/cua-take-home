@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Close Account</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+{% if errors %}
+<table cellpadding="2"><tr><td>
+<font color="red"><b>Please correct the following:</b></font><br>
+{% for e in errors %}<font color="red">! {{ e }}</font><br>{% endfor %}
+</td></tr></table>
+{% endif %}
+{% if acct %}
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><td>Account No</td><td>{{ acct.number }}</td></tr>
+<tr class="r2"><td>Product</td><td>{{ acct.product }}</td></tr>
+<tr class="c1"><td>Balance</td><td>{{ acct.balance }}</td></tr>
+<tr class="r2"><td>Status</td><td>{{ acct.status }}</td></tr>
+</table>
+<p><font size="1" color="#666">Balance must be $0.00 before an account can be closed.</font></p>
+<form action="/member/{{ m.member_no }}/accounts/{{ acct.number }}/close/execute" method="post">
+<input type="submit" value="Close Account">
+</form>
+{% else %}
+<font color="red">Account not found.</font>
+{% endif %}
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}

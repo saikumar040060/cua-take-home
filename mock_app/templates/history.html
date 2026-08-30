@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block body %}
+<div class="bx">
+<font size="3"><b>Transaction History</b></font> &mdash; Member {{ m.member_no }} ({{ m.name }})
+{% if acct %}
+<font size="2">Account {{ acct.number }} ({{ acct.product }}) &mdash; Balance {{ acct.balance }}</font>
+<table class="tbl-a" cellpadding="2">
+<tr class="c1"><th>Date</th><th>Description</th><th>Amount</th></tr>
+{% for t in txns %}
+<tr class="{{ loop.cycle('r2','c1') }}"><td>{{ t.date }}</td><td>{{ t.description }}</td><td>{{ t.amount }}</td></tr>
+{% else %}
+<tr><td colspan="3">No transactions on file for this account.</td></tr>
+{% endfor %}
+</table>
+{% else %}
+<font color="red">Account not found.</font>
+{% endif %}
+<br>
+<a href="/member/{{ m.member_no }}">&laquo; Back to Member Profile</a>
+</div>
+{% endblock %}
