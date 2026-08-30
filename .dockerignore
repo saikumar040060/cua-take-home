@@ -1,0 +1,10 @@
+.git
+.venv
+.playwright-browsers
+.env
+.pytest_cache
+__pycache__
+*.pyc
+runs
+outputs
+work

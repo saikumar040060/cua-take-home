@@ -583,7 +583,7 @@
       "value_template": null,
       "url_template": null,
       "output_name": null,
-      "risk": "safe",
+      "risk": "risky",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+/update",
         "text": "CHANGES SAVED",

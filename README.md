@@ -19,6 +19,15 @@ The target is a bundled mock "legacy" bank back-office app (server-rendered
 tables, no test IDs, injectable runtime faults). See `REPORT.md` for design
 reasoning and `evidence/` for recorded runs.
 
+The submission build adds two product surfaces around that core:
+
+- `/customer` — customer banking assistant; the LLM routes intent only.
+- `/` — bank-employee operations console with intervention actions, run
+  history, correlated events, and the approved capability catalog.
+
+See `ARCHITECTURE.md` for the banking-grade target architecture and
+`DEPLOYMENT.md` for the container deployment path.
+
 ## Setup
 
 Requires Python 3.12.
@@ -35,6 +44,10 @@ below. Replay, the mock app, and the whole test suite run without any key or
 network access. The one exception is the MERIDIAN CORE chatbot further down
 this README -- it also calls the API live to route each chat message, so make
 sure your key is in `.env` before using its chat box.
+
+For the MERIDIAN service, also configure the server-owned operator and
+supervisor credentials shown in `.env.example`. Customers never provide these
+credentials and the routing LLM never receives them.
 
 If you cannot (or don't want to) let Playwright download a browser, point
 `CUA_CHROMIUM_PATH` in `.env` at an existing Chromium/Chrome binary.
@@ -155,13 +168,22 @@ Run the capability API + chatbot + dashboard:
 python -m meridian_service.app
 ```
 
-Then open **http://127.0.0.1:5077** — browse the capability catalog, type a
-plain-language request into the chat box (e.g. "check the balance for member
-100987, operator teller1 password password"), and watch it route to the right
-capability and run the real deterministic replay. Run history and evidence
-are visible on the same page. `GET /api/capabilities` and
+Then open **http://127.0.0.1:5077/customer** and type a plain-language request
+(e.g. "check the balance for member 100987"). Open
+**http://127.0.0.1:5077/** for the employee operations console. The customer
+request routes to an approved capability and then runs the real deterministic
+replay; interventions, run history, and evidence are visible to the employee.
+`GET /api/capabilities` and
 `POST /api/capabilities/<id>/invoke` are the callable API a calling agent
-would use directly, with no knowledge of the underlying UI.
+would use directly, with no knowledge of the underlying UI. Mutating calls
+require an `Idempotency-Key` header and pause at the actual commit action unless
+an authorized caller supplies confirmation.
+
+Set `PUBLIC_DEMO_READ_ONLY=true` for every public submission deployment. It
+blocks all write capabilities and employee commands until bank SSO/JWT and
+role-based authorization are integrated. Use only synthetic legacy credentials
+in a public demo; never deploy production bank credentials with this
+unauthenticated submission surface.
 
 ## Live Demo Path (MERIDIAN CORE)
 
@@ -175,7 +197,9 @@ source .venv/bin/activate
 python -m meridian_service.app
 ```
 
-Open **http://127.0.0.1:5077** and confirm the dashboard loads with all 7 capabilities in the catalog panel.
+Open **http://127.0.0.1:5077/customer** for customer requests and
+**http://127.0.0.1:5077/** for the employee console. Confirm the console loads
+all 7 capabilities in the catalog panel.
 
 **One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows.
 
@@ -184,7 +208,7 @@ Open **http://127.0.0.1:5077** and confirm the dashboard loads with all 7 capabi
 Point at the dashboard's catalog panel: all 7 required functions are recorded and callable right now, each with a typed signature. Example:
 
 ```
-meridian_member_balance(operator_id, password, member_id)
+meridian_member_balance(member_id)
   -> {first_share_balance, first_share_status}
 ```
 
@@ -193,7 +217,7 @@ meridian_member_balance(operator_id, password, member_id)
 In the chat box, type:
 
 ```
-check the balance for member 100987, operator teller1 password password
+check the balance for member 100987
 ```
 
 One LLM call routes the plain-language request to a capability name and typed arguments — it never touches the browser. Everything after that is deterministic replay of a recorded artifact, no model in the loop.
@@ -210,21 +234,23 @@ first_share_balance=$52.00, first_share_status=OPEN
 Type:
 
 ```
-transfer $1 from share 102777-MMKT-3 to share 102777-MMKT-4 for member 102777, memo routine transfer, operator teller1 password password
+transfer $1 from share 102777-MMKT-3 to share 102777-MMKT-4 for member 102777, memo routine transfer
 ```
 
 This is a risky, irreversible action, so it pauses instead of just running. Expected: the run shows status `awaiting_human`:
 
 ```
 bot: I started 'meridian_funds_transfer' but it needs a human decision
-before continuing: step 's08_click_funds_transfer' is classified RISKY...
+before continuing: step 's14_click_post_transfer' is classified RISKY...
 Open the dashboard to look at the live session and approve, deny, or
 act on it.
 ```
 
 That pause is enforced inside the replay engine itself, not the chatbot or API layer — no code path can skip it.
 
-**This capability pauses TWICE, not once** — once at the navigation click into Funds Transfer, once at the actual Post Transfer click (the real irreversible step; the navigation link is flagged too, a known documented cut in `ADAPTATION.md`). The dashboard has no approve/deny button (kept minimal by design), so approving happens via the API:
+The capability pauses once, at the actual irreversible **Post Transfer** step.
+The employee can approve or deny it directly from the operations console. The
+same action is also available through the command API:
 
 ```bash
 curl -s -X POST http://127.0.0.1:5077/api/runs/RUN_ID/command \
@@ -237,14 +263,17 @@ To check the run's current status (same RUN_ID), use:
 curl -s http://127.0.0.1:5077/api/runs/RUN_ID
 ```
 
-Run the approve command once, then check the run again. On the most recent test, the source share had gone on `HOLD` since the last run, so instead of pausing a second time, it correctly reported a `business_outcome` (`share_on_hold`) at `s14_click_post_transfer` instead -- the engine checks for a legitimate business rejection before ever escalating for something that isn't going to happen anyway. If the share isn't on hold, expect a second pause at `s14_click_post_transfer` -- run the same approve command again. A verified, freshly-tested run of `102777-MMKT-3` → `102777-MMKT-4` for $1 completed live, confirmed by the balances moving from $5.00/$5.00 to $4.00/$6.00 on the member record. If these shares have also changed by demo time, sign on manually, pull up member 102777's record, and use whatever two `OPEN` shares are shown live.
+Approve once, then check the run again. If the source share is on `HOLD`, the
+engine reports the declared `share_on_hold` business outcome instead of
+misclassifying it as an automation failure. If the demo data has changed, use
+two shares currently shown as `OPEN` for the member.
 
 ### Step 4 — The supervisor-override capability
 
 Type:
 
 ```
-place a hold on member 103001's share, reason routine review, operator super1 password password
+place a hold on member 103001's share, reason routine review
 ```
 
 This exercises the supervisor-override path — gated differently from teller-level actions, and irreversible, so it's a second, distinct risky-action test. Real recorded outcome: share `103001-MMKT-3`, confirmation reference `CN480377`.
@@ -252,7 +281,7 @@ This exercises the supervisor-override path — gated differently from teller-le
 ### Step 5 — Quick coverage flex (only if time allows)
 
 ```
-look up member 100234, operator teller1 password password
+look up member 100234
 ```
 
 Real recorded result: `member_name=Lovelace, Ada`, `member_status=OPEN`. This is the 7th function, read-only member lookup. Skip this step if short on time — Steps 1–4 already prove the important things.
@@ -260,7 +289,7 @@ Real recorded result: `member_name=Lovelace, Ada`, `member_status=OPEN`. This is
 ### Step 6 — An exceptional state (proves the 3-bucket taxonomy)
 
 ```
-check the balance for member 999999, operator teller1 password password
+check the balance for member 999999
 ```
 
 Expected: a clean `member_not_found` business outcome (HTTP 404 under the hood) — reported as a normal, non-alarming result, not an error. Every run in this system sorts into exactly one of three buckets: business outcome, recoverable condition, hard failure — including runs coming through this new API/chatbot layer, verified live.

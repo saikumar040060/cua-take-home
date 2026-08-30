@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: meridian-automation-demo
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    maxShutdownDelaySeconds: 120
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: MERIDIAN_OPERATOR_ID
+        sync: false
+      - key: MERIDIAN_OPERATOR_PASSWORD
+        sync: false
+      - key: MERIDIAN_SUPERVISOR_ID
+        sync: false
+      - key: MERIDIAN_SUPERVISOR_PASSWORD
+        sync: false
+      - key: CUA_MODEL
+        value: claude-sonnet-4-5
+      - key: LOG_LEVEL
+        value: INFO
+      # Mandatory for this unauthenticated public submission surface. Never
+      # disable this with real credentials; use a private deployment instead.
+      - key: PUBLIC_DEMO_READ_ONLY
+        value: "true"

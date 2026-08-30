@@ -1,112 +1,173 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>MERIDIAN CORE — Capability Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MERIDIAN CORE — Operations Console</title>
 <style>
-  body { font-family: -apple-system, sans-serif; margin: 0; background: #0f1115; color: #e6e6e6; }
-  header { padding: 16px 24px; border-bottom: 1px solid #262a33; }
-  h1 { font-size: 16px; margin: 0; }
-  main { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 16px 24px; }
-  section { background: #171a21; border: 1px solid #262a33; border-radius: 8px; padding: 12px; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #9aa4b2; margin: 0 0 10px; }
-  .cap { border-bottom: 1px solid #262a33; padding: 8px 0; }
-  .cap:last-child { border-bottom: none; }
-  .cap .sig { font-family: monospace; font-size: 12px; color: #7dd3fc; }
-  .cap .desc { font-size: 12px; color: #b8c0cc; margin-top: 4px; white-space: pre-wrap; }
-  .runrow { border-bottom: 1px solid #262a33; padding: 8px 0; font-size: 12px; cursor: pointer; }
-  .runrow:hover { background: #1c2028; }
-  .status { display:inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-left: 6px; }
-  .status.success, .status.done { background: #14532d; color: #86efac; }
-  .status.business_outcome { background: #3f3f19; color: #fde68a; }
-  .status.hard_failure, .status.error { background: #4c1d1d; color: #fca5a5; }
-  .status.awaiting_human, .status.running { background: #1e3a5f; color: #93c5fd; }
-  #detail { grid-column: span 2; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow: auto; }
-  input, button { background: #0f1115; color: #e6e6e6; border: 1px solid #262a33; border-radius: 6px; padding: 6px 8px; font-size: 12px; }
-  button { cursor: pointer; }
-  .chatlog div { margin-bottom: 8px; }
-  .chatlog .me { color: #93c5fd; }
-  .chatlog .bot { color: #86efac; }
+  :root { color-scheme: dark; --bg:#07111f; --panel:#0d1b2a; --line:#1d344a; --ink:#edf6ff; --muted:#91a5b8; --cyan:#43c6db; --green:#3ddc97; --amber:#ffca6a; --red:#ff7474; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:linear-gradient(145deg,#06101d,#0a1625 55%,#081421); color:var(--ink); font:14px/1.45 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; min-height:100vh; }
+  header { height:66px; display:flex; align-items:center; justify-content:space-between; padding:0 28px; border-bottom:1px solid var(--line); background:rgba(7,17,31,.92); position:sticky; top:0; z-index:3; }
+  .brand { display:flex; align-items:center; gap:11px; font-weight:750; letter-spacing:.03em; }
+  .mark { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; color:#04101a; background:linear-gradient(135deg,var(--cyan),var(--green)); font-weight:900; }
+  .subbrand { color:var(--muted); font-weight:500; margin-left:5px; }
+  header nav { display:flex; align-items:center; gap:16px; }
+  a { color:var(--cyan); text-decoration:none; }
+  .env { border:1px solid #725d27; color:var(--amber); background:#2b2415; padding:4px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+  main { max-width:1400px; margin:0 auto; padding:24px 28px 50px; }
+  .titlebar { display:flex; justify-content:space-between; gap:20px; align-items:flex-end; margin-bottom:20px; }
+  h1 { font-size:25px; margin:0 0 4px; letter-spacing:-.025em; }
+  .muted { color:var(--muted); }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:18px; }
+  .stat, section { background:rgba(13,27,42,.9); border:1px solid var(--line); border-radius:13px; }
+  .stat { padding:14px 16px; }
+  .stat strong { display:block; font-size:23px; margin-top:3px; }
+  .stat span { color:var(--muted); font-size:12px; }
+  .layout { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(330px,.75fr); gap:16px; align-items:start; }
+  section { overflow:hidden; }
+  .section-head { padding:14px 16px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  h2 { margin:0; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:#b7c8d8; }
+  .list { padding:5px 0; }
+  .row { padding:12px 16px; border-bottom:1px solid rgba(29,52,74,.72); cursor:pointer; display:flex; justify-content:space-between; gap:18px; }
+  .row:last-child { border-bottom:0; }
+  .row:hover { background:#10243a; }
+  .row-main { min-width:0; }
+  .row-title { font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row-meta { color:var(--muted); font-size:12px; margin-top:3px; }
+  .badge { align-self:center; white-space:nowrap; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; border:1px solid transparent; }
+  .success,.done { color:#8bf0bd; background:#102d24; border-color:#20543f; }
+  .business_outcome { color:#ffe19b; background:#322914; border-color:#6b5422; }
+  .hard_failure,.error { color:#ffabab; background:#361b24; border-color:#713040; }
+  .awaiting_human { color:#ffe19b; background:#352813; border-color:#796026; }
+  .running { color:#93e6f2; background:#102b35; border-color:#205768; }
+  .empty { padding:25px 16px; text-align:center; color:var(--muted); }
+  .intervention { margin-bottom:16px; border-color:#6c5423; }
+  .intervention .section-head { background:#2b2213; }
+  .cap { padding:11px 16px; border-bottom:1px solid rgba(29,52,74,.72); }
+  .cap:last-child { border:0; }
+  .signature { color:var(--cyan); font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; overflow-wrap:anywhere; }
+  .detail { margin-top:16px; }
+  .detail-grid { display:grid; grid-template-columns:1fr 1fr; }
+  .detail-pane { padding:16px; min-height:180px; }
+  .detail-pane + .detail-pane { border-left:1px solid var(--line); }
+  pre { margin:10px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; color:#c7d7e6; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; max-height:370px; overflow:auto; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:13px; }
+  button { border:1px solid var(--line); background:#12273d; color:var(--ink); border-radius:8px; padding:8px 12px; cursor:pointer; font-weight:700; }
+  button:hover { border-color:var(--cyan); }
+  button.approve { background:#123a2d; border-color:#287154; }
+  button.deny { background:#3a1c25; border-color:#743143; }
+  @media(max-width:850px) { .stats{grid-template-columns:1fr 1fr}.layout{grid-template-columns:1fr}.detail-grid{grid-template-columns:1fr}.detail-pane+.detail-pane{border-left:0;border-top:1px solid var(--line)}.subbrand{display:none} }
 </style>
 </head>
 <body>
-<header><h1>MERIDIAN CORE — capabilities, runs, and evidence (read-only view over what the engine already records)</h1></header>
+<header>
+  <div class="brand"><div class="mark">M</div><span>MERIDIAN CORE <span class="subbrand">Operations Console</span></span></div>
+  <nav><span class="env">{% if public_demo_read_only %}READ-ONLY PUBLIC DEMO{% else %}PRIVATE SUBMISSION DEMO{% endif %}</span><a href="/customer">Customer assistant →</a></nav>
+</header>
 <main>
-  <section>
-    <h2>Capability catalog</h2>
-    <div id="catalog">loading…</div>
+  <div class="titlebar">
+    <div><h1>Automation operations</h1><div class="muted">Review interventions, capability health, and the complete execution trail.{% if public_demo_read_only %} Employee actions are disabled on this public instance.{% endif %}</div></div>
+    <div class="muted" id="lastUpdated">Loading…</div>
+  </div>
+  <div class="stats">
+    <div class="stat"><span>Running</span><strong id="runningCount">0</strong></div>
+    <div class="stat"><span>Waiting for employee</span><strong id="waitingCount">0</strong></div>
+    <div class="stat"><span>Completed</span><strong id="completedCount">0</strong></div>
+    <div class="stat"><span>Needs investigation</span><strong id="failedCount">0</strong></div>
+  </div>
+  <section class="intervention">
+    <div class="section-head"><h2>Human intervention queue</h2><span class="muted">Highest priority first</span></div>
+    <div class="list" id="interventions"><div class="empty">No requests waiting for an employee.</div></div>
   </section>
-
-  <section>
-    <h2>Chat (routes to a capability, then runs deterministic replay)</h2>
-    <div class="chatlog" id="chatlog"></div>
-    <input id="chatInput" style="width:70%" placeholder="e.g. check the balance for member 100987">
-    <button onclick="sendChat()">Send</button>
-  </section>
-
-  <section style="grid-column: span 2;">
-    <h2>Run history</h2>
-    <div id="runs">loading…</div>
-  </section>
-
-  <section id="detailWrap" style="grid-column: span 2; display:none;">
-    <h2>Run detail</h2>
-    <div id="detail"></div>
+  <div class="layout">
+    <section>
+      <div class="section-head"><h2>Run history</h2><span class="muted">Latest 50</span></div>
+      <div class="list" id="runs"><div class="empty">Loading runs…</div></div>
+    </section>
+    <section>
+      <div class="section-head"><h2>Approved capability catalog</h2><span class="muted" id="capCount"></span></div>
+      <div class="list" id="catalog"><div class="empty">Loading capabilities…</div></div>
+    </section>
+  </div>
+  <section class="detail" id="detailWrap" hidden>
+    <div class="section-head"><h2>Run investigation</h2><span class="muted" id="detailId"></span></div>
+    <div class="detail-grid">
+      <div class="detail-pane"><strong>Current state</strong><div class="actions" id="actions"></div><pre id="detail"></pre></div>
+      <div class="detail-pane"><strong>Correlated event log</strong><pre id="events"></pre></div>
+    </div>
   </section>
 </main>
-
 <script>
+const el = id => document.getElementById(id);
+function badge(status) {
+  const node = document.createElement('span');
+  node.className = 'badge ' + status;
+  node.textContent = status.replaceAll('_', ' ');
+  return node;
+}
+function empty(text) {
+  const node = document.createElement('div'); node.className = 'empty'; node.textContent = text; return node;
+}
+function runStatus(run) { return (run.result && run.result.status) || run.status; }
+function runRow(run) {
+  const row = document.createElement('div'); row.className = 'row'; row.tabIndex = 0;
+  const main = document.createElement('div'); main.className = 'row-main';
+  const title = document.createElement('div'); title.className = 'row-title'; title.textContent = run.capability_id;
+  const meta = document.createElement('div'); meta.className = 'row-meta'; meta.textContent = run.run_id;
+  main.append(title, meta); row.append(main, badge(runStatus(run)));
+  row.onclick = () => showDetail(run.run_id); row.onkeydown = e => { if (e.key === 'Enter') showDetail(run.run_id); };
+  return row;
+}
 async function loadCatalog() {
-  const res = await fetch('/api/capabilities');
-  const caps = await res.json();
-  document.getElementById('catalog').innerHTML = caps.map(c => `
-    <div class="cap">
-      <div class="sig">${c.signature}</div>
-      <div class="desc">${c.description.split('\\n')[0]}</div>
-    </div>`).join('') || '<em>none recorded yet</em>';
+  const response = await fetch('/api/capabilities'); const caps = await response.json();
+  const root = el('catalog'); root.replaceChildren(); el('capCount').textContent = caps.length + ' published';
+  if (!caps.length) return root.append(empty('No capabilities published.'));
+  for (const cap of caps) {
+    const node = document.createElement('div'); node.className = 'cap';
+    const sig = document.createElement('div'); sig.className = 'signature'; sig.textContent = cap.signature;
+    const desc = document.createElement('div'); desc.className = 'row-meta'; desc.textContent = cap.name + (cap.requires_confirmation ? ' · confirmation required' : ' · read-only');
+    node.append(sig, desc); root.append(node);
+  }
 }
-
 async function loadRuns() {
-  const res = await fetch('/api/runs');
-  const runs = await res.json();
-  document.getElementById('runs').innerHTML = runs.map(r => {
-    const st = (r.result && r.result.status) || r.status;
-    return `<div class="runrow" onclick="showDetail('${r.run_id}')">
-      ${r.run_id} — ${r.capability_id} <span class="status ${st}">${st}</span>
-    </div>`;
-  }).join('') || '<em>no runs yet</em>';
+  const response = await fetch('/api/runs'); const runs = await response.json();
+  const root = el('runs'); root.replaceChildren();
+  if (!runs.length) root.append(empty('No runs yet. Use the customer assistant to start one.'));
+  runs.forEach(run => root.append(runRow(run)));
+  const waiting = runs.filter(r => r.status === 'awaiting_human');
+  const queue = el('interventions'); queue.replaceChildren();
+  if (!waiting.length) queue.append(empty('No requests waiting for an employee.'));
+  waiting.forEach(run => queue.append(runRow(run)));
+  el('runningCount').textContent = runs.filter(r => r.status === 'running').length;
+  el('waitingCount').textContent = waiting.length;
+  el('completedCount').textContent = runs.filter(r => runStatus(r) === 'success' || runStatus(r) === 'business_outcome').length;
+  el('failedCount').textContent = runs.filter(r => runStatus(r) === 'hard_failure' || r.status === 'error').length;
+  el('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
 }
-
+async function command(runId, action) {
+  if ((action === 'approve' || action === 'deny') && !confirm(action === 'approve' ? 'Approve this banking action?' : 'Deny this banking action?')) return;
+  await fetch('/api/runs/' + encodeURIComponent(runId) + '/command', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({command:action}) });
+  setTimeout(() => { loadRuns(); showDetail(runId); }, 500);
+}
 async function showDetail(runId) {
-  const res = await fetch('/api/runs/' + runId);
-  const data = await res.json();
-  document.getElementById('detailWrap').style.display = 'block';
-  document.getElementById('detail').textContent = JSON.stringify(data, null, 2);
+  const [runResponse, eventResponse] = await Promise.all([
+    fetch('/api/runs/' + encodeURIComponent(runId)),
+    fetch('/api/evidence/' + encodeURIComponent(runId) + '/events')
+  ]);
+  const data = await runResponse.json(); const events = await eventResponse.json();
+  el('detailWrap').hidden = false; el('detailId').textContent = runId;
+  el('detail').textContent = JSON.stringify(data, null, 2);
+  el('events').textContent = events.length ? events.map(e => JSON.stringify(e)).join('\n') : 'No events recorded yet.';
+  const actions = el('actions'); actions.replaceChildren();
+  if (data.status === 'awaiting_human') {
+    for (const action of ['approve','deny','resume','abort']) {
+      const button = document.createElement('button'); button.textContent = action; button.className = action; button.onclick = () => command(runId, action); actions.append(button);
+    }
+  }
+  el('detailWrap').scrollIntoView({behavior:'smooth',block:'start'});
 }
-
-async function sendChat() {
-  const input = document.getElementById('chatInput');
-  const msg = input.value.trim();
-  if (!msg) return;
-  const log = document.getElementById('chatlog');
-  log.innerHTML += `<div class="me">you: ${msg}</div>`;
-  input.value = '';
-  log.innerHTML += `<div class="bot" id="pending">…thinking</div>`;
-  const res = await fetch('/api/chat', {
-    method: 'POST', headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({message: msg})
-  });
-  const data = await res.json();
-  document.getElementById('pending').remove();
-  log.innerHTML += `<div class="bot">bot: ${data.reply}</div>`;
-  loadRuns();
-}
-
-document.getElementById('chatInput').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
-
-loadCatalog();
-loadRuns();
-setInterval(loadRuns, 4000);
+loadCatalog(); loadRuns(); setInterval(loadRuns, 4000);
 </script>
 </body>
 </html>

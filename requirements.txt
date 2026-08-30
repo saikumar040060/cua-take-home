@@ -1,6 +1,7 @@
-flask>=3.0
-playwright>=1.40
-pydantic>=2.5
-anthropic>=0.40
-python-dotenv>=1.0
-pytest>=8.0
+flask>=3.0,<4
+playwright==1.61.0
+pydantic>=2.5,<3
+anthropic>=0.40,<2
+python-dotenv>=1.0,<2
+gunicorn>=23,<24
+pytest>=8.0,<10

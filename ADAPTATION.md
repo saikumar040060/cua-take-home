@@ -16,7 +16,7 @@ Recording the actual capabilities surfaced three categories of friction, all res
 
 `meridian_service/app.py` exposes the recorded capabilities as plain HTTP:
 
-* `GET /api/capabilities` — the catalog: each capability's `capability_id`, human-readable `signature()` (e.g. `meridian_member_balance(operator_id, password, member_id) -> {first_share_balance, first_share_status}`), typed inputs/outputs, and declared business outcomes. A caller (or the chatbot) can build a valid invocation from this alone, with no knowledge of the underlying UI.
+* `GET /api/capabilities` — the customer-safe catalog: each capability's `capability_id`, human-readable signature (e.g. `meridian_member_balance(member_id) -> {first_share_balance, first_share_status}`), typed inputs/outputs, declared business outcomes, and confirmation requirement. Infrastructure-owned legacy credentials are deliberately omitted.
 * `POST /api/capabilities/<id>/invoke` — runs the real `ReplayEngine` in a background thread (Playwright's sync API requires one dedicated thread per session, the same pattern used elsewhere for this project) and returns a `run_id` immediately; the caller polls `GET /api/runs/<run_id>` for status (`running` / `awaiting_human` / `done` / `error`) and, on completion, the same structured result shape `ReplayResult` already produces (`status`, `outputs`, `business_outcome`, `failure`, `recoveries`).
 * `POST /api/runs/<run_id>/command` — feeds a command (`look`, `approve`, `deny`, `click <ref>`, ...) into the paused run's live `OperatorConsole`, exactly like the terminal console, just over HTTP.
 
@@ -40,8 +40,17 @@ All three were verified live through the new surface, not just asserted:
 
 All seven required functions are recorded and verified against the live target: sign-on, member balance, funds transfer, member inquiry, opening a new share, updating member contact information, and placing a supervisor-gated account hold. The two explicit must-haves (balance check, funds transfer) are covered, and so is every distinct risk/permission pattern the brief described — a plain read, a teller-level irreversible action, a form submission with validation, and a supervisor-gated irreversible override.
 
-`place_account_hold`'s spec deliberately avoids a hardcoded share ID or reason-code string — both known failure modes from the funds-transfer recording — and instead has the agent confirm the chosen member has no share already on HOLD, pick the first OPEN share, and select the closest-matching real reason code off the live dropdown; it recorded successfully on the first attempt written this way. Two risky steps were captured for it: the navigation click into the hold screen and the final posting click, the same over-broad risky-pattern match noted below. `update_member_info` took three attempts (see "text with no element reference" above) before landing on reading the mutated field back rather than the unreadable confirmation banner.
+`place_account_hold`'s spec deliberately avoids a hardcoded share ID or reason-code string — both known failure modes from the funds-transfer recording — and instead has the agent confirm the chosen member has no share already on HOLD, pick the first OPEN share, and select the closest-matching real reason code off the live dropdown; it recorded successfully on the first attempt written this way. `update_member_info` took three attempts (see "text with no element reference" above) before landing on reading the mutated field back rather than the unreadable confirmation banner.
 
-The chatbot and dashboard are intentionally minimal — no auth, no styling system, no run-history pagination — exactly as invited ("keep both intentionally simple").
+The submission build now adds a styled customer assistant and employee
+operations console, server-side credential binding, request IDs, rate limits,
+catalog caching, a router circuit breaker, idempotency for writes, structured
+logs, and container deployment. Risk patterns were narrowed and the recorded
+artifacts corrected so escalation happens only at the actual commit action
+(`Post Transfer`, `Apply Hold`, `Open Share`, or `Save Changes`).
 
-Next, in order: fold manually-performed handoff steps back into the artifact automatically instead of requiring a clean re-record; and tighten the risky-action name pattern, which currently classifies the *navigation link* into a risky action (e.g. "Funds Transfer", "Place Account Hold") as risky itself (matching the action name in its accessible name) rather than only the actual posting action — safe-by-default, but worth narrowing so escalation happens at the step that actually mutates state rather than one step earlier than necessary.
+Next, in order: connect both surfaces to the bank identity provider and durable
+authorization policy; move run state, queues, idempotency, evidence, and audit
+records to shared infrastructure; isolate browser workers; add reconciliation
+for unknown write effects; and fold manually performed handoff steps back into
+new artifact drafts automatically instead of requiring a clean re-record.

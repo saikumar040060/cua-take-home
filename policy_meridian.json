@@ -4,7 +4,8 @@
   "blocked_path_prefixes": ["/admin", "/system-settings"],
   "allowed_actions": ["navigate", "click", "fill", "select", "press", "read"],
   "risky_name_patterns": [
-    "create", "submit", "delete", "remove", "transfer", "post", "approve",
-    "close account", "hold", "override", "confirm"
+    "^create", "^submit", "^delete", "^remove", "^post transfer$",
+    "^open share$", "^save changes$", "^apply hold$", "^approve",
+    "^close account$", "^override", "^confirm"
   ]
 }

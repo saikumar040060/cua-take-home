@@ -32,12 +32,14 @@ Run:  python -m meridian_service.app   (from the cua-take-home repo root)
 from __future__ import annotations
 
 import json
+import logging
 import os
 import queue
 import re
 import sys
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -49,7 +51,7 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(PROJECT_DIR / ".env")
 
-from flask import Flask, jsonify, render_template, request  # noqa: E402
+from flask import Flask, g, jsonify, render_template, request  # noqa: E402
 
 from cua.browser import BrowserSession  # noqa: E402
 from cua.escalation.console import OperatorConsole  # noqa: E402
@@ -57,13 +59,125 @@ from cua.replay.engine import ParamError, ReplayEngine  # noqa: E402
 from cua.runlog import RunLogger, new_run_id  # noqa: E402
 from cua.safety.policy import Policy, PolicyGate  # noqa: E402
 from cua.safety.redact import Redactor  # noqa: E402
-from cua.schema import Capability  # noqa: E402
+from cua.schema import Capability, RiskLevel, Sensitivity  # noqa: E402
+from meridian_service.platform import (  # noqa: E402
+    CircuitBreaker,
+    CircuitOpen,
+    IdempotencyStore,
+    SlidingWindowRateLimiter,
+    TTLCache,
+)
 
 ARTIFACTS_DIR = PROJECT_DIR / "artifacts" / "meridian_core"
 RUNS_DIR = PROJECT_DIR / "runs"
 POLICY_PATH = PROJECT_DIR / "policy_meridian.json"
 
 app = Flask(__name__)
+
+APP_LOG = logging.getLogger("meridian_service")
+if not APP_LOG.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(message)s"))
+    APP_LOG.addHandler(_handler)
+APP_LOG.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
+
+RATE_LIMITER = SlidingWindowRateLimiter()
+CAPABILITY_CACHE: TTLCache[list[Capability]] = TTLCache(ttl_seconds=5)
+ROUTER_BREAKER = CircuitBreaker(failure_threshold=3, reset_seconds=30)
+IDEMPOTENCY: IdempotencyStore["RunState"] = IdempotencyStore(ttl_seconds=3600)
+
+# These values are infrastructure-owned. They are never exposed to the routing
+# model and never accepted from a customer request.
+SYSTEM_BOUND_INPUTS = {"operator_id", "password"}
+_REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+
+def _json_log(event: str, **fields: Any) -> None:
+    APP_LOG.info(json.dumps({"event": event, **fields}, default=str))
+
+
+def _public_demo_read_only() -> bool:
+    """Fail closed for public demos that do not yet have bank SSO/JWT."""
+    return os.environ.get("PUBLIC_DEMO_READ_ONLY", "false").lower() == "true"
+
+
+def _rate_limit_for_path(path: str) -> tuple[int, int]:
+    if path == "/api/chat":
+        return 10, 60
+    if path.endswith("/invoke"):
+        return 20, 60
+    if path.endswith("/command"):
+        return 60, 60
+    return 120, 60
+
+
+@app.before_request
+def _cross_cutting_before_request():
+    supplied = request.headers.get("X-Request-ID", "")
+    g.request_id = supplied if _REQUEST_ID_RE.fullmatch(supplied) else uuid.uuid4().hex
+    g.request_started = time.monotonic()
+    if not request.path.startswith("/api/"):
+        return None
+    limit, window = _rate_limit_for_path(request.path)
+    identity = request.remote_addr or "unknown"
+    decision = RATE_LIMITER.check(
+        f"{identity}:{request.method}:{request.path}",
+        limit=limit,
+        window_seconds=window,
+    )
+    if decision.allowed:
+        return None
+    response = jsonify(
+        {
+            "error": "rate_limited",
+            "message": "Too many requests. Please retry later.",
+            "request_id": g.request_id,
+        }
+    )
+    response.status_code = 429
+    response.headers["Retry-After"] = str(decision.retry_after_seconds)
+    return response
+
+
+@app.after_request
+def _cross_cutting_after_request(response):
+    request_id = getattr(g, "request_id", uuid.uuid4().hex)
+    started = getattr(g, "request_started", time.monotonic())
+    duration_ms = int((time.monotonic() - started) * 1000)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    )
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    _json_log(
+        "http_request",
+        request_id=request_id,
+        method=request.method,
+        path=request.path,
+        status=response.status_code,
+        duration_ms=duration_ms,
+    )
+    return response
+
+
+@app.get("/healthz")
+def healthz():
+    return jsonify({"status": "ok"})
+
+
+@app.get("/readyz")
+def readyz():
+    try:
+        count = len(list_capabilities())
+        Policy.load(POLICY_PATH)
+    except Exception as exc:  # noqa: BLE001
+        return jsonify({"status": "not_ready", "error": str(exc)}), 503
+    return jsonify({"status": "ready", "capabilities": count})
 
 
 def new_gate() -> PolicyGate:
@@ -155,7 +269,7 @@ class TrackedConsole(OperatorConsole):
 # --------------------------------------------------------------------- #
 
 
-def list_capabilities() -> list[Capability]:
+def _load_capabilities() -> list[Capability]:
     caps = []
     if ARTIFACTS_DIR.exists():
         for p in sorted(ARTIFACTS_DIR.glob("*.json")):
@@ -166,6 +280,11 @@ def list_capabilities() -> list[Capability]:
     return caps
 
 
+def list_capabilities() -> list[Capability]:
+    """Return the frequently-read catalog through a short-lived TTL cache."""
+    return CAPABILITY_CACHE.get_or_load(_load_capabilities)
+
+
 def get_capability(capability_id: str) -> Capability | None:
     for cap in list_capabilities():
         if cap.capability_id == capability_id:
@@ -173,16 +292,99 @@ def get_capability(capability_id: str) -> Capability | None:
     return None
 
 
+def _is_mutating(capability: Capability) -> bool:
+    return any(step.risk == RiskLevel.RISKY for step in capability.steps)
+
+
+def _client_inputs(capability: Capability):
+    return [p for p in capability.inputs if p.name not in SYSTEM_BOUND_INPUTS]
+
+
+def _client_signature(capability: Capability) -> str:
+    params = ", ".join(
+        f"{p.name}: {p.kind.value}" for p in _client_inputs(capability)
+    )
+    outputs = ", ".join(
+        f"{output.name}: {output.kind.value}" for output in capability.outputs
+    )
+    return f"{capability.capability_id}({params}) -> {{{outputs}}}"
+
+
+def _bind_system_credentials(
+    capability: Capability, supplied: dict[str, str]
+) -> dict[str, str]:
+    forbidden = SYSTEM_BOUND_INPUTS.intersection(supplied)
+    if forbidden:
+        raise ParamError(
+            "infrastructure-owned parameter(s) may not be supplied by a client: "
+            f"{sorted(forbidden)}"
+        )
+
+    params = dict(supplied)
+    needs = {p.name for p in capability.inputs}.intersection(SYSTEM_BOUND_INPUTS)
+    if not needs:
+        return params
+
+    supervisor = capability.capability_id == "meridian_place_account_hold"
+    operator_key = (
+        "MERIDIAN_SUPERVISOR_ID" if supervisor else "MERIDIAN_OPERATOR_ID"
+    )
+    password_key = (
+        "MERIDIAN_SUPERVISOR_PASSWORD"
+        if supervisor
+        else "MERIDIAN_OPERATOR_PASSWORD"
+    )
+    values = {
+        "operator_id": os.environ.get(operator_key),
+        "password": os.environ.get(password_key),
+    }
+    missing = [name for name in needs if not values.get(name)]
+    if missing:
+        raise RuntimeError(
+            "server-side legacy credentials are not configured for this capability"
+        )
+    params.update({name: str(values[name]) for name in needs})
+    return params
+
+
+def _idempotency_fingerprint(
+    capability: Capability, params: dict[str, str]
+) -> str:
+    public = {
+        k: v for k, v in params.items() if k not in SYSTEM_BOUND_INPUTS
+    }
+    return json.dumps(
+        {"capability": capability.capability_id, "params": public},
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
 # --------------------------------------------------------------------- #
 # Capability API -- runs the real, unmodified ReplayEngine. No LLM.
 # --------------------------------------------------------------------- #
 
 
-def start_replay(capability: Capability, params: dict[str, str], *, confirm_risky: bool, headed: bool) -> RunState:
+def start_replay(
+    capability: Capability,
+    params: dict[str, str],
+    *,
+    confirm_risky: bool,
+    headed: bool,
+    idempotency_key: str | None = None,
+) -> RunState:
+    fingerprint = _idempotency_fingerprint(capability, params)
+    if idempotency_key:
+        existing = IDEMPOTENCY.get(idempotency_key, fingerprint)
+        if existing is not None:
+            return existing
+
     run_id = new_run_id("replay")
     state = RunState(run_id=run_id, capability_id=capability.capability_id)
     with RUNS_LOCK:
         RUNS[run_id] = state
+    if idempotency_key:
+        IDEMPOTENCY.put(idempotency_key, fingerprint, state)
 
     def worker() -> None:
         redactor = Redactor()
@@ -213,6 +415,12 @@ def start_replay(capability: Capability, params: dict[str, str], *, confirm_risk
         except Exception as exc:  # noqa: BLE001
             state.error = f"{exc.__class__.__name__}: {exc}"
             state.status = "error"
+            _json_log(
+                "replay_worker_error",
+                run_id=run_id,
+                capability_id=capability.capability_id,
+                error_type=exc.__class__.__name__,
+            )
 
     threading.Thread(target=worker, daemon=True).start()
     return state
@@ -226,7 +434,7 @@ def run_summary(state: RunState) -> dict:
         "intervention": state.intervention,
         "result": state.result,
         "error": state.error,
-        "evidence_dir": str(state.logger.dir) if state.logger else None,
+        "evidence_available": state.logger is not None,
     }
 
 
@@ -236,11 +444,15 @@ def api_capabilities():
         {
             "capability_id": c.capability_id,
             "name": c.name,
-            "signature": c.signature(),
+            "signature": _client_signature(c),
             "description": c.description,
-            "inputs": [p.model_dump(mode="json") for p in c.inputs],
+            "inputs": [
+                p.model_dump(mode="json", exclude={"example"})
+                for p in _client_inputs(c)
+            ],
             "outputs": [o.model_dump(mode="json") for o in c.outputs],
             "business_outcomes": [b.code for b in c.business_outcomes],
+            "requires_confirmation": _is_mutating(c),
         }
         for c in list_capabilities()
     ])
@@ -252,10 +464,47 @@ def api_invoke(capability_id: str):
     if cap is None:
         return jsonify({"error": f"unknown capability '{capability_id}'"}), 404
     body = request.get_json(force=True, silent=True) or {}
-    params = {k: str(v) for k, v in (body.get("params") or {}).items()}
-    confirm_risky = bool(body.get("confirm_risky", False))
-    headed = bool(body.get("headed", False))
-    state = start_replay(cap, params, confirm_risky=confirm_risky, headed=headed)
+    if not isinstance(body, dict) or not isinstance(body.get("params", {}), dict):
+        return jsonify({"error": "params must be a JSON object"}), 400
+    if "confirm_risky" in body and not isinstance(body["confirm_risky"], bool):
+        return jsonify({"error": "confirm_risky must be a boolean"}), 400
+    if _public_demo_read_only() and _is_mutating(cap):
+        return jsonify(
+            {
+                "error": "public_demo_read_only",
+                "message": (
+                    "Write capabilities are disabled on the public demo until "
+                    "bank SSO/JWT and employee authorization are connected."
+                ),
+            }
+        ), 403
+    supplied = {k: str(v) for k, v in body.get("params", {}).items()}
+    try:
+        params = _bind_system_credentials(cap, supplied)
+    except ParamError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except RuntimeError as exc:
+        return jsonify({"error": str(exc)}), 503
+
+    idempotency_key = request.headers.get("Idempotency-Key")
+    if _is_mutating(cap) and not idempotency_key:
+        return jsonify(
+            {"error": "Idempotency-Key is required for mutating capabilities"}
+        ), 400
+    if idempotency_key and not _REQUEST_ID_RE.fullmatch(idempotency_key):
+        return jsonify({"error": "invalid Idempotency-Key"}), 400
+
+    confirm_risky = body.get("confirm_risky", False)
+    try:
+        state = start_replay(
+            cap,
+            params,
+            confirm_risky=confirm_risky,
+            headed=os.environ.get("CUA_HEADED", "false").lower() == "true",
+            idempotency_key=idempotency_key,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 409
     return jsonify(run_summary(state)), 202
 
 
@@ -277,9 +526,18 @@ def api_run(run_id: str):
 
 @app.post("/api/runs/<run_id>/command")
 def api_run_command(run_id: str):
+    if _public_demo_read_only():
+        return jsonify(
+            {
+                "error": "public_demo_read_only",
+                "message": "Employee commands are disabled on the public demo.",
+            }
+        ), 403
     state = RUNS.get(run_id)
     if state is None:
         return jsonify({"error": "unknown run"}), 404
+    if state.status != "awaiting_human":
+        return jsonify({"error": "run is not awaiting human action"}), 409
     body = request.get_json(force=True, silent=True) or {}
     line = str(body.get("command", "")).strip()
     if not line:
@@ -298,12 +556,17 @@ def api_run_command(run_id: str):
 def _catalog_tools() -> list[dict]:
     tools = []
     for cap in list_capabilities():
-        props = {p.name: {"type": "string", "description": p.description} for p in cap.inputs}
-        required = [p.name for p in cap.inputs if p.required]
+        client_inputs = _client_inputs(cap)
+        props = {
+            p.name: {"type": "string", "description": p.description}
+            for p in client_inputs
+        }
+        required = [p.name for p in client_inputs if p.required]
+        client_signature = _client_signature(cap)
         tools.append({
             "name": cap.capability_id,
             "description": (
-                f"{cap.description}\nSignature: {cap.signature()}\n"
+                f"{cap.description}\nCustomer-safe signature: {client_signature}\n"
                 f"Possible business outcomes: {', '.join(b.code for b in cap.business_outcomes) or 'none'}."
             ),
             "input_schema": {"type": "object", "properties": props, "required": required},
@@ -364,29 +627,58 @@ def api_chat():
 
     import anthropic
 
-    client = anthropic.Anthropic()
     tools = _catalog_tools()
     if not tools:
         return jsonify({"reply": "No capabilities are recorded yet."})
 
-    resp = client.messages.create(
-        model=os.environ.get("CUA_MODEL", "claude-sonnet-4-5"),
-        max_tokens=1024,
-        tools=tools,
-        tool_choice={"type": "any"},
-        messages=[{
-            "role": "user",
-            "content": (
-                "You are a routing layer over a fixed set of deterministic "
-                "capabilities against MERIDIAN CORE. Pick exactly one capability "
-                "that matches this request and call it with the right typed "
-                "arguments extracted from the request. Do not invent values you "
-                "were not given -- ask for the missing ones instead by explaining "
-                "what's missing, if truly required arguments are absent.\n\n"
-                f"Request: {message}"
-            ),
-        }],
+    # Defense in depth: legacy credentials are server-bound and excluded from
+    # tool schemas; also scrub password-shaped text a customer typed anyway.
+    routed_message = re.sub(
+        r"(?i)(password\s*(?:is|=|:)?\s*)\S+",
+        r"\1[REDACTED]",
+        message,
     )
+
+    def _route():
+        client = anthropic.Anthropic()
+        return client.messages.create(
+            model=os.environ.get("CUA_MODEL", "claude-sonnet-4-5"),
+            max_tokens=1024,
+            tools=tools,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "You are a routing layer over a fixed set of deterministic "
+                    "capabilities against MERIDIAN CORE. Select one capability "
+                    "only when all of its required customer inputs are present. "
+                    "Never invent values. If information is missing, explain what "
+                    "the customer must provide without making a tool call.\n\n"
+                    f"Request: {routed_message}"
+                ),
+            }],
+        )
+
+    try:
+        resp = ROUTER_BREAKER.call(_route)
+    except CircuitOpen:
+        return jsonify(
+            {
+                "reply": (
+                    "The assistant is temporarily unavailable. Your request was "
+                    "not executed; please try again or contact a bank employee."
+                )
+            }
+        ), 503
+    except Exception as exc:  # noqa: BLE001
+        _json_log("router_error", error_type=exc.__class__.__name__)
+        return jsonify(
+            {
+                "reply": (
+                    "I could not safely understand that request. Nothing was "
+                    "executed; please try again or contact a bank employee."
+                )
+            }
+        ), 503
 
     tool_use = next((b for b in resp.content if b.type == "tool_use"), None)
     if tool_use is None:
@@ -394,15 +686,53 @@ def api_chat():
         return jsonify({"reply": text or "I couldn't map that to a known capability."})
 
     capability_id = tool_use.name
-    params = {k: str(v) for k, v in (tool_use.input or {}).items()}
+    supplied = {k: str(v) for k, v in (tool_use.input or {}).items()}
     cap = get_capability(capability_id)
     if cap is None:
         return jsonify({"reply": f"Routed to unknown capability '{capability_id}'."})
 
-    state = start_replay(cap, params, confirm_risky=False, headed=False)
+    if _public_demo_read_only() and _is_mutating(cap):
+        return jsonify(
+            {
+                "reply": (
+                    "That request maps to a write capability. Writes are disabled "
+                    "on this public demo until bank SSO/JWT and employee "
+                    "authorization are connected. Nothing was executed."
+                ),
+                "capability_id": capability_id,
+            }
+        ), 403
+
+    try:
+        params = _bind_system_credentials(cap, supplied)
+    except (ParamError, RuntimeError) as exc:
+        return jsonify({"reply": str(exc)}), 503
+
+    idempotency_key = request.headers.get("Idempotency-Key") or g.request_id
+    try:
+        state = start_replay(
+            cap,
+            params,
+            confirm_risky=False,
+            headed=False,
+            idempotency_key=idempotency_key,
+        )
+    except ValueError as exc:
+        return jsonify({"reply": str(exc)}), 409
     outcome = _await_result(state.run_id)
     reply = _plain_language_reply(capability_id, outcome)
-    return jsonify({"reply": reply, "capability_id": capability_id, "params": params, "run_id": state.run_id, "detail": outcome})
+    safe_params = {
+        p.name: supplied[p.name]
+        for p in _client_inputs(cap)
+        if p.sensitivity == Sensitivity.PUBLIC and p.name in supplied
+    }
+    return jsonify({
+        "reply": reply,
+        "capability_id": capability_id,
+        "params": safe_params,
+        "run_id": state.run_id,
+        "detail": outcome,
+    })
 
 
 # --------------------------------------------------------------------- #
@@ -413,7 +743,16 @@ def api_chat():
 
 @app.get("/")
 def dashboard():
-    return render_template("dashboard.html")
+    return render_template(
+        "dashboard.html", public_demo_read_only=_public_demo_read_only()
+    )
+
+
+@app.get("/customer")
+def customer_assistant():
+    return render_template(
+        "customer.html", public_demo_read_only=_public_demo_read_only()
+    )
 
 
 @app.get("/api/evidence/<run_id>/events")
