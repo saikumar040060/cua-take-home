@@ -1,0 +1,54 @@
+{
+  "capability_id": "mock_loan_application",
+  "name": "Submit a self-service loan application",
+  "goal": "Look up the member by member number, open their profile, and click 'Apply for Loan'. Select the given purpose from the dropdown (exact option text) and enter the given amount. Submit the application. Read back the application reference shown on the confirmation screen.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "purpose",
+      "value": "Auto",
+      "description": "Loan purpose, exact option text from the dropdown (e.g. 'Auto', 'Personal')."
+    },
+    {
+      "name": "amount",
+      "value": "12000.00",
+      "description": "Amount requested in dollars ($500 - $75,000)."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "application_ref",
+      "description": "The loan application reference shown after submission.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    },
+    {
+      "code": "validation_rejected",
+      "text": "Please correct the following",
+      "description": "The loan amount was below the minimum or above the self-service maximum."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 16
+}

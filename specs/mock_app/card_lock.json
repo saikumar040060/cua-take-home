@@ -1,0 +1,43 @@
+{
+  "capability_id": "mock_lock_card",
+  "name": "Lock a member's active card",
+  "goal": "Look up the member by member number, open their profile, and click 'Manage Cards'. Find the row whose card number ends in the given card_last4; its action button should read 'Lock Card' (the card starts ACTIVE). Click that button. After the page reloads, read back that same card row's Status cell to confirm it now shows LOCKED.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "card_last4",
+      "value": "3615",
+      "description": "Last 4 digits of the card to lock/unlock."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "card_status",
+      "description": "The card's status after toggling (ACTIVE or LOCKED)."
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 14
+}

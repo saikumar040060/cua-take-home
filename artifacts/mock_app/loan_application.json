@@ -1,0 +1,409 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "mock_loan_application",
+  "version": 1,
+  "name": "Submit a self-service loan application",
+  "description": "Look up the member by member number, open their profile, and click 'Apply for Loan'. Select the given purpose from the dropdown (exact option text) and enter the given amount. Submit the application. Read back the application reference shown on the confirmation screen.\n\nReturns: application_ref — The loan application reference shown after submission.. Possible business outcomes: member_not_found, validation_rejected.",
+  "provenance": {
+    "goal": "Look up the member by member number, open their profile, and click 'Apply for Loan'. Select the given purpose from the dropdown (exact option text) and enter the given amount. Submit the application. Read back the application reference shown on the confirmation screen.",
+    "model": "claude-sonnet-4-5",
+    "run_id": "discovery-20260830T201300Z-7ec48f",
+    "discovered_at": "2026-08-30T20:13:22.557079Z"
+  },
+  "entry_url_template": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "kind": "string",
+      "description": "The member number.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "purpose",
+      "kind": "string",
+      "description": "Loan purpose, exact option text from the dropdown (e.g. 'Auto', 'Personal').",
+      "required": true,
+      "example": "Auto",
+      "sensitivity": "public"
+    },
+    {
+      "name": "amount",
+      "kind": "string",
+      "description": "Amount requested in dollars ($500 - $75,000).",
+      "required": true,
+      "example": "12000.00",
+      "sensitivity": "public"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "application_ref",
+      "kind": "string",
+      "description": "The loan application reference shown after submission.",
+      "source_step_id": "s07_read_application_ref",
+      "sensitivity": "identifier"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s01_fill_member_no",
+      "description": "Enter the member number {member_id} to look up the member",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Member No\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"mno\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{member_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Member No\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"mno\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s02_click_search",
+      "description": "Click the Search button to look up the member with number {member_id}",
+      "action": "click",
+      "target": {
+        "description": "the button \"Search\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Search",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(3) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+",
+        "text": "Member Profile",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Member Profile at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s03_click_apply_for_loan",
+      "description": "Click 'Apply for Loan' to start the loan application process",
+      "action": "click",
+      "target": {
+        "description": "the link \"Apply for Loan\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Apply for Loan",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Apply for Loan",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table:nth-of-type(3) > tbody > tr:nth-of-type(2) > td:nth-of-type(1) > a",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/loan/new",
+        "text": "Loan Application",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Loan Application at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s04_select_purpose",
+      "description": "Select '{purpose}' as the loan purpose from the dropdown",
+      "action": "select",
+      "target": {
+        "description": "the combobox \"Purpose\" (select)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "select[name=\"purpose\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{purpose}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the combobox \"Purpose\" (select)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "select[name=\"purpose\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the select target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s05_fill_amount_requested",
+      "description": "Enter the loan amount of {amount} in the Amount Requested field",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Amount Requested\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"amount\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{amount}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Amount Requested\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"amount\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s06_click_submit_application",
+      "description": "Submit the loan application with the selected purpose and amount",
+      "action": "click",
+      "target": {
+        "description": "the button \"Submit Application\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Submit Application",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(3) > td > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "risky",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/loan/confirm/[^/]+",
+        "text": null,
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows the expected page at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s07_read_application_ref",
+      "description": "Read the application reference number from the confirmation screen",
+      "action": "read",
+      "target": {
+        "description": "the value cell next to \"Application Ref\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"Application Ref\")) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Last resort: structural path (drift canary)."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "application_ref",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the value cell next to \"Application Ref\"",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "tr:has(td:text-is(\"Application Ref\")) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Last resort: structural path (drift canary)."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "The member number does not exist.",
+      "detector": {
+        "url_pattern": null,
+        "text": "No matching member record",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'No matching member record'"
+      }
+    },
+    {
+      "code": "validation_rejected",
+      "description": "The loan amount was below the minimum or above the self-service maximum.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Please correct the following",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'Please correct the following'"
+      }
+    }
+  ],
+  "recovery_rules": [
+    {
+      "id": "session_expiry_notice",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Your teller session will expire",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'Your teller session will expire'"
+      },
+      "action_kind": "click",
+      "action_target": {
+        "description": "the button \"Continue\" that dismisses the interstitial",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Continue",
+            "note": "Interstitial dismiss control by role + accessible name."
+          }
+        ]
+      },
+      "max_applications": 2
+    }
+  ]
+}

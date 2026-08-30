@@ -1,0 +1,51 @@
+{
+  "capability_id": "mock_transaction_history",
+  "name": "Read a member's most recent transaction on one account",
+  "goal": "Look up the member by member number, open their profile, and click the 'View' history link for the account matching the given account_no. The transaction table has no unique row identifier -- each row is just a date/description/amount -- so read the TOP (most recent) row specifically: perform three separate single-cell reads against that top row's Date, Description, and Amount cells, naming each a declared output. If the account has no transactions, call blocked and say so.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "value": "712280-S01",
+      "description": "Account number to view transaction history for."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "txn_date",
+      "description": "Date of the most recent transaction row."
+    },
+    {
+      "name": "txn_description",
+      "description": "Description of the most recent transaction row."
+    },
+    {
+      "name": "txn_amount",
+      "description": "Amount of the most recent transaction row."
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 14
+}

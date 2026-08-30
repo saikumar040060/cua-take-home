@@ -1,0 +1,346 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "mock_transaction_history",
+  "version": 1,
+  "name": "Read a member's most recent transaction on one account",
+  "description": "Look up the member by member number, open their profile, and click the 'View' history link for the account matching the given account_no. The transaction table has no unique row identifier -- each row is just a date/description/amount -- so read the TOP (most recent) row specifically: perform three separate single-cell reads against that top row's Date, Description, and Amount cells, naming each a declared output. If the account has no transactions, call blocked and say so.\n\nReturns: txn_date — Date of the most recent transaction row., txn_description — Description of the most recent transaction row., txn_amount — Amount of the most recent transaction row.. Possible business outcomes: member_not_found.",
+  "provenance": {
+    "goal": "Look up the member by member number, open their profile, and click the 'View' history link for the account matching the given account_no. The transaction table has no unique row identifier -- each row is just a date/description/amount -- so read the TOP (most recent) row specifically: perform three separate single-cell reads against that top row's Date, Description, and Amount cells, naming each a declared output. If the account has no transactions, call blocked and say so.",
+    "model": "claude-sonnet-4-5",
+    "run_id": "discovery-20260830T202253Z-5cbc03",
+    "discovered_at": "2026-08-30T20:23:08.888340Z"
+  },
+  "entry_url_template": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "kind": "string",
+      "description": "The member number.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "kind": "string",
+      "description": "Account number to view transaction history for.",
+      "required": true,
+      "example": "712280-S01",
+      "sensitivity": "public"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "txn_date",
+      "kind": "string",
+      "description": "Date of the most recent transaction row.",
+      "source_step_id": "s04_read_date",
+      "sensitivity": "public"
+    },
+    {
+      "name": "txn_description",
+      "kind": "string",
+      "description": "Description of the most recent transaction row.",
+      "source_step_id": "s05_read_10_28_2026",
+      "sensitivity": "public"
+    },
+    {
+      "name": "txn_amount",
+      "kind": "string",
+      "description": "Amount of the most recent transaction row.",
+      "source_step_id": "s06_read_monthly_dividend",
+      "sensitivity": "public"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s01_fill_member_no",
+      "description": "Enter the member number {member_id} to look up the member",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Member No\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"mno\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{member_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Member No\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"mno\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s02_click_search",
+      "description": "Click the Search button to search for member {member_id}",
+      "action": "click",
+      "target": {
+        "description": "the button \"Search\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Search",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(3) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+",
+        "text": "Member Profile",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Member Profile at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s03_click_view",
+      "description": "Click the View link for account {account_no} (Regular Savings) to view transaction history",
+      "action": "click",
+      "target": {
+        "description": "the \"View\" control in the row where account_no is \"{account_no}\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"{account_no}\")) a:text-is(\"View\")",
+            "name": null,
+            "note": "Anchored on the 'account_no' column so this control is resolved within the correct row, not the first/nearest row with a matching accessible name. No positional fallback -- see function docstring."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/accounts/[^/?#]+/history",
+        "text": "Transaction History",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Transaction History at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s04_read_date",
+      "description": "Read the date of the most recent (top) transaction row",
+      "action": "read",
+      "target": {
+        "description": "the \"Date\" cell in this row",
+        "locators": [
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(2) > td:nth-of-type(1)",
+            "name": null,
+            "note": "Primary: structural position of the 'Date' column in this row. No label:value pair exists in the row itself (the label is the column header), so position is the only valid locator here."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "txn_date",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the \"Date\" cell in this row",
+          "locators": [
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(2) > td:nth-of-type(1)",
+              "name": null,
+              "note": "Primary: structural position of the 'Date' column in this row. No label:value pair exists in the row itself (the label is the column header), so position is the only valid locator here."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s05_read_10_28_2026",
+      "description": "Read the description of the most recent (top) transaction row",
+      "action": "read",
+      "target": {
+        "description": "the value cell next to \"10/28/2026\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"10/28/2026\")) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Last resort: structural path (drift canary)."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "txn_description",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the value cell next to \"10/28/2026\"",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "tr:has(td:text-is(\"10/28/2026\")) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Last resort: structural path (drift canary)."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s06_read_monthly_dividend",
+      "description": "Read the amount of the most recent (top) transaction row",
+      "action": "read",
+      "target": {
+        "description": "the value cell next to \"MONTHLY DIVIDEND\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"MONTHLY DIVIDEND\")) > td:nth-of-type(3)",
+            "name": null,
+            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(2) > td:nth-of-type(3)",
+            "name": null,
+            "note": "Last resort: structural path (drift canary)."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "txn_amount",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the value cell next to \"MONTHLY DIVIDEND\"",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "tr:has(td:text-is(\"MONTHLY DIVIDEND\")) > td:nth-of-type(3)",
+              "name": null,
+              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(2) > td:nth-of-type(3)",
+              "name": null,
+              "note": "Last resort: structural path (drift canary)."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "The member number does not exist.",
+      "detector": {
+        "url_pattern": null,
+        "text": "No matching member record",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'No matching member record'"
+      }
+    }
+  ],
+  "recovery_rules": [
+    {
+      "id": "session_expiry_notice",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Your teller session will expire",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'Your teller session will expire'"
+      },
+      "action_kind": "click",
+      "action_target": {
+        "description": "the button \"Continue\" that dismisses the interstitial",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Continue",
+            "note": "Interstitial dismiss control by role + accessible name."
+          }
+        ]
+      },
+      "max_applications": 2
+    }
+  ]
+}

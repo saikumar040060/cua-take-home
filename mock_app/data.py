@@ -222,6 +222,13 @@ def _gen_members(count: int, *, start_no: int, seed: int) -> dict[str, Member]:
 
 MEMBERS.update(_gen_members(120, start_no=20001, seed=42))
 
+# One deliberately zero-balance account, so close_account has a real success
+# path to record/replay against, not just the nonzero-balance rejection.
+MEMBERS["20001"].accounts.append(
+    Account("712280-S03", "Free Checking", "$0.00", "01/01/2026")
+)
+MEMBERS["20001"].transactions["712280-S03"] = []
+
 
 # --------------------------------------------------------------------- #
 # Business operations

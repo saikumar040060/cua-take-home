@@ -1,0 +1,279 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "mock_close_account",
+  "version": 1,
+  "name": "Close a member account with a zero balance",
+  "description": "Look up the member by member number and open their profile to confirm the account with the given account_no is present and its balance is $0.00. There is no on-page link to close a specific account, so navigate directly to the close-account screen for this member and this account_no (the URL follows the pattern /member/{member_id}/accounts/{account_no}/close). Confirm the account's balance shown there is $0.00, then click Close Account. Read back the account number shown on the resulting confirmation screen.\n\nReturns: closed_account_no — The account number confirmed as closed.. Possible business outcomes: member_not_found, nonzero_balance.",
+  "provenance": {
+    "goal": "Look up the member by member number and open their profile to confirm the account with the given account_no is present and its balance is $0.00. There is no on-page link to close a specific account, so navigate directly to the close-account screen for this member and this account_no (the URL follows the pattern /member/{member_id}/accounts/{account_no}/close). Confirm the account's balance shown there is $0.00, then click Close Account. Read back the account number shown on the resulting confirmation screen.",
+    "model": "claude-sonnet-4-5",
+    "run_id": "discovery-20260830T201215Z-289660",
+    "discovered_at": "2026-08-30T20:12:30.433561Z"
+  },
+  "entry_url_template": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "kind": "string",
+      "description": "The member number.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "kind": "string",
+      "description": "Exact zero-balance account number to close.",
+      "required": true,
+      "example": "712280-S03",
+      "sensitivity": "public"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "closed_account_no",
+      "kind": "string",
+      "description": "The account number confirmed as closed.",
+      "source_step_id": "s05_read_account_no",
+      "sensitivity": "public"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s01_fill_member_no",
+      "description": "Enter the member number {member_id} to look up the member",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Member No\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"mno\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{member_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Member No\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"mno\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s02_click_search",
+      "description": "Click the Search button to look up member {member_id}",
+      "action": "click",
+      "target": {
+        "description": "the button \"Search\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Search",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(3) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+",
+        "text": "Member Profile",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Member Profile at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s03_navigate_http_127_0_0_1_5000_memb",
+      "description": "Navigate directly to the close-account screen for member {member_id} and account {account_no}",
+      "action": "navigate",
+      "target": null,
+      "value_template": null,
+      "url_template": "http://127.0.0.1:5000/member/{member_id}/accounts/{account_no}/close",
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/accounts/[^/?#]+/close",
+        "text": "Close Account",
+        "target": null,
+        "http_status": null,
+        "description": "after navigate, the app shows Close Account at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s04_click_close_account",
+      "description": "Click the Close Account button to close account {account_no} which has a confirmed $0.00 balance",
+      "action": "click",
+      "target": {
+        "description": "the button \"Close Account\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Close Account",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "risky",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/accounts/[^/?#]+/close/confirm",
+        "text": "Account Closed",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Account Closed at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s05_read_account_no",
+      "description": "Read the account number from the confirmation screen to verify the account that was closed",
+      "action": "read",
+      "target": {
+        "description": "the value cell next to \"Account No\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"Account No\")) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Last resort: structural path (drift canary)."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "closed_account_no",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the value cell next to \"Account No\"",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "tr:has(td:text-is(\"Account No\")) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Last resort: structural path (drift canary)."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "The member number does not exist.",
+      "detector": {
+        "url_pattern": null,
+        "text": "No matching member record",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'No matching member record'"
+      }
+    },
+    {
+      "code": "nonzero_balance",
+      "description": "The account cannot be closed because it does not have a zero balance -- a legitimate business-rule rejection.",
+      "detector": {
+        "url_pattern": null,
+        "text": "balance must be",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'balance must be'"
+      }
+    }
+  ],
+  "recovery_rules": [
+    {
+      "id": "session_expiry_notice",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Your teller session will expire",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'Your teller session will expire'"
+      },
+      "action_kind": "click",
+      "action_target": {
+        "description": "the button \"Continue\" that dismisses the interstitial",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Continue",
+            "note": "Interstitial dismiss control by role + accessible name."
+          }
+        ]
+      },
+      "max_applications": 2
+    }
+  ]
+}

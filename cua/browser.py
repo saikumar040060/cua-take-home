@@ -162,12 +162,32 @@ _SNAPSHOT_JS = r"""
     if (el.tagName.toLowerCase() === 'select') {
       entry.options = Array.from(el.options).map(o => o.value).filter(v => v);
     }
+    // Row context: when this control sits inside a table row (e.g. a "View"
+    // or "Edit" link repeated once per row), its role+name/text locator is
+    // identical across every row and therefore ambiguous. Capture the
+    // row's cell texts here too -- same shape as the readable-cell scan
+    // below -- so the recorder can anchor on a declared input's value
+    // found in this row, the same way it already does for data cells.
+    const tr = el.closest('tr');
+    if (tr) {
+      entry.row_texts = Array.from(tr.children)
+        .filter(c => c.tagName === 'TD')
+        .map(c => (c.innerText || '').trim());
+    }
     results.push(entry);
   }
   // Readable data cells: legacy apps put values in label/value table rows.
   // A cell qualifies if it is a pure-text leaf whose left sibling looks like
   // a label — that label becomes the cell's name, so the agent can `read` it
-  // and the recorder can build a label-relative locator for it.
+  // and the recorder can build a label-relative locator for it. A cell in
+  // the table's FIRST column has no left sibling to use as a label at all
+  // (previousElementSibling is null) -- fall back to that column's header
+  // cell instead, so the first column of a data table is readable too, not
+  // silently invisible to the agent. The two cases build different locator
+  // kinds downstream (see label_source): a sibling label is itself a cell
+  // in the same row (a real label:value pair), so the row can be found by
+  // that label's text; a header label lives in a different row entirely,
+  // so it can only ever identify a *column*, not anchor a row lookup.
   let cells = 0;
   for (const td of document.querySelectorAll('td')) {
     if (cells >= 40) break;
@@ -175,14 +195,30 @@ _SNAPSHOT_JS = r"""
     if (td.querySelector('a, input, select, button, textarea, table')) continue;
     const text = (td.innerText || '').trim();
     if (!text || text.length > 100) continue;
-    const prev = td.previousElementSibling;
-    if (!prev || prev.tagName !== 'TD') continue;
-    const label = (prev.innerText || '').trim().replace(/:$/, '');
-    if (!label || label.length > 60) continue;
-    i += 1; cells += 1;
     const row = td.parentElement;
     const rowCells = Array.from(row.children).filter(c => c.tagName === 'TD');
     const colIndex = rowCells.indexOf(td) + 1;
+    const prev = td.previousElementSibling;
+    let label = null;
+    let labelSource = null;
+    if (prev && prev.tagName === 'TD') {
+      label = (prev.innerText || '').trim().replace(/:$/, '');
+      labelSource = 'sibling';
+    } else {
+      const table = td.closest('table');
+      const headerRow = table ? table.querySelector('tr') : null;
+      if (headerRow && headerRow !== row) {
+        const headerCells = Array.from(headerRow.children)
+          .filter(c => c.tagName === 'TH' || c.tagName === 'TD');
+        const headerCell = headerCells[colIndex - 1];
+        if (headerCell) {
+          label = (headerCell.innerText || '').trim().replace(/:$/, '');
+          labelSource = 'header';
+        }
+      }
+    }
+    if (!label || label.length > 60) continue;
+    i += 1; cells += 1;
     // Full row, in column order -- lets the recorder recognize when a
     // *different* cell in this same row (not just the immediately
     // preceding one) is the row's real stable identity, e.g. a Share ID
@@ -201,6 +237,7 @@ _SNAPSHOT_JS = r"""
       prev_label: label,
       col_index: colIndex,
       row_texts: rowTexts,
+      label_source: labelSource,
     });
   }
   return {
@@ -227,6 +264,7 @@ class ElementInfo:
     col_index: int | None = None
     name_is_real: bool = True
     row_texts: list[str] = field(default_factory=list)
+    label_source: str | None = None  # "sibling" | "header" | None
 
 
 @dataclass
@@ -270,6 +308,7 @@ def take_snapshot(page: Page) -> Snapshot:
             col_index=e.get("col_index"),
             name_is_real=e.get("name_is_real", True),
             row_texts=e.get("row_texts") or [],
+            label_source=e.get("label_source"),
         )
         for e in raw["elements"]
     ]
@@ -301,6 +340,32 @@ def build_locator_chain(info: ElementInfo) -> ElementTarget:
     """
     locators: list[SchemaLocator] = []
     if info.role == "cell" and info.prev_label and info.col_index:
+        if info.label_source == "header":
+            # The label came from the table's header row, not a same-row
+            # sibling -- it identifies a *column*, not a row, so a
+            # `tr:has(td:text-is(label))` selector would never match (that
+            # text lives in the header row, not this data row). There is no
+            # semantic row-identity to anchor on here; the structural path
+            # (this row, this column) is the only correct locator -- which
+            # is also the right read for "the top/most recent row", a
+            # genuinely positional concept, not a fallback for a missing one.
+            if info.css_path:
+                locators.append(
+                    SchemaLocator(
+                        strategy=LocatorStrategy.DOM_PATH,
+                        value=info.css_path,
+                        note=(
+                            f"Primary: structural position of the '{info.prev_label}' "
+                            "column in this row. No label:value pair exists in the "
+                            "row itself (the label is the column header), so "
+                            "position is the only valid locator here."
+                        ),
+                    )
+                )
+            return ElementTarget(
+                description=f'the "{info.prev_label}" cell in this row',
+                locators=locators or [SchemaLocator(strategy=LocatorStrategy.CSS, value=info.css_path or "", note="Fallback")],
+            )
         locators.append(
             SchemaLocator(
                 strategy=LocatorStrategy.CSS,

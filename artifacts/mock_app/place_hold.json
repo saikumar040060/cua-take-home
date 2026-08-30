@@ -1,0 +1,409 @@
+{
+  "schema_version": "1.0",
+  "capability_id": "mock_place_hold",
+  "version": 1,
+  "name": "Place a restricted hold on a member account",
+  "description": "Look up the member by member number, open their profile, and click 'Place Account Hold'. This is a restricted function. Select the given account_no from the Account dropdown by its exact account number, select the given reason from the Reason dropdown (exact option text), and click Place Hold. Read back the confirmation reference shown after posting. This action is irreversible once posted.\n\nReturns: confirmation_ref — Confirmation reference shown after the hold is posted.. Possible business outcomes: member_not_found, already_on_hold.",
+  "provenance": {
+    "goal": "Look up the member by member number, open their profile, and click 'Place Account Hold'. This is a restricted function. Select the given account_no from the Account dropdown by its exact account number, select the given reason from the Reason dropdown (exact option text), and click Place Hold. Read back the confirmation reference shown after posting. This action is irreversible once posted.",
+    "model": "claude-sonnet-4-5",
+    "run_id": "discovery-20260830T202459Z-bffc10",
+    "discovered_at": "2026-08-30T20:25:16.478871Z"
+  },
+  "entry_url_template": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "kind": "string",
+      "description": "The member number.",
+      "required": true,
+      "example": null,
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "kind": "string",
+      "description": "Account number to place the hold on.",
+      "required": true,
+      "example": "712280-S02",
+      "sensitivity": "public"
+    },
+    {
+      "name": "reason",
+      "kind": "string",
+      "description": "Hold reason, exact option text from the dropdown.",
+      "required": true,
+      "example": "Suspected Fraud",
+      "sensitivity": "public"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_ref",
+      "kind": "string",
+      "description": "Confirmation reference shown after the hold is posted.",
+      "source_step_id": "s07_read_confirmation_ref",
+      "sensitivity": "identifier"
+    }
+  ],
+  "steps": [
+    {
+      "id": "s01_fill_member_no",
+      "description": "Enter the member number {member_id} to look up the member profile",
+      "action": "fill",
+      "target": {
+        "description": "the textbox \"Member No\" (input)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "input[name=\"mno\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{member_id}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the textbox \"Member No\" (input)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "input[name=\"mno\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(2) > input",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the fill target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s02_click_search",
+      "description": "Click the Search button to look up member {member_id}",
+      "action": "click",
+      "target": {
+        "description": "the button \"Search\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Search",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr > td:nth-of-type(3) > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+",
+        "text": "Member Profile",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Member Profile at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s03_click_place_account_hold",
+      "description": "Click the 'Place Account Hold' link to access the account hold function",
+      "action": "click",
+      "target": {
+        "description": "the link \"Place Account Hold\" (a)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "link",
+            "name": "Place Account Hold",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "text",
+            "value": "Place Account Hold",
+            "name": null,
+            "note": "Fallback: visible link text; stable until copy changes."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table:nth-of-type(3) > tbody > tr:nth-of-type(2) > td:nth-of-type(3) > a",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/hold",
+        "text": "Place Account Hold",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Place Account Hold at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s04_select_account",
+      "description": "Select account {account_no} from the Account dropdown",
+      "action": "select",
+      "target": {
+        "description": "the combobox \"Account\" (select)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "select[name=\"account_no\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{account_no}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the combobox \"Account\" (select)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "select[name=\"account_no\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the select target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s05_select_reason",
+      "description": "Select '{reason}' from the Reason dropdown",
+      "action": "select",
+      "target": {
+        "description": "the combobox \"Reason\" (select)",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "select[name=\"reason\"]",
+            "name": null,
+            "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > select",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": "{reason}",
+      "url_template": null,
+      "output_name": null,
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the combobox \"Reason\" (select)",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "select[name=\"reason\"]",
+              "name": null,
+              "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > select",
+              "name": null,
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the select target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s06_click_place_hold",
+      "description": "Click the Place Hold button to submit the account hold",
+      "action": "click",
+      "target": {
+        "description": "the button \"Place Hold\" (input)",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Place Hold",
+            "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > form > table > tbody > tr:nth-of-type(3) > td > input",
+            "name": null,
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": null,
+      "risk": "risky",
+      "checkpoint": {
+        "url_pattern": "http://127\\.0\\.0\\.1:5000/member/[^/?#]+/hold/confirm/[^/]+",
+        "text": "Hold Placed",
+        "target": null,
+        "http_status": null,
+        "description": "after click, the app shows Hold Placed at the expected URL"
+      },
+      "wait_timeout_ms": 5000
+    },
+    {
+      "id": "s07_read_confirmation_ref",
+      "description": "Read the confirmation reference number for the account hold that was placed",
+      "action": "read",
+      "target": {
+        "description": "the value cell next to \"Confirmation Ref\"",
+        "locators": [
+          {
+            "strategy": "css",
+            "value": "tr:has(td:text-is(\"Confirmation Ref\")) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+          },
+          {
+            "strategy": "dom_path",
+            "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+            "name": null,
+            "note": "Last resort: structural path (drift canary)."
+          }
+        ]
+      },
+      "value_template": null,
+      "url_template": null,
+      "output_name": "confirmation_ref",
+      "risk": "safe",
+      "checkpoint": {
+        "url_pattern": null,
+        "text": null,
+        "target": {
+          "description": "the value cell next to \"Confirmation Ref\"",
+          "locators": [
+            {
+              "strategy": "css",
+              "value": "tr:has(td:text-is(\"Confirmation Ref\")) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            },
+            {
+              "strategy": "dom_path",
+              "value": "body > div:nth-of-type(1) > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2)",
+              "name": null,
+              "note": "Last resort: structural path (drift canary)."
+            }
+          ]
+        },
+        "http_status": null,
+        "description": "the read target is present and stable"
+      },
+      "wait_timeout_ms": 5000
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "description": "The member number does not exist.",
+      "detector": {
+        "url_pattern": null,
+        "text": "No matching member record",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'No matching member record'"
+      }
+    },
+    {
+      "code": "already_on_hold",
+      "description": "The account already has an active hold -- a legitimate rejection.",
+      "detector": {
+        "url_pattern": null,
+        "text": "already has an active hold",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'already has an active hold'"
+      }
+    }
+  ],
+  "recovery_rules": [
+    {
+      "id": "session_expiry_notice",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "detector": {
+        "url_pattern": null,
+        "text": "Your teller session will expire",
+        "target": null,
+        "http_status": null,
+        "description": "page shows: 'Your teller session will expire'"
+      },
+      "action_kind": "click",
+      "action_target": {
+        "description": "the button \"Continue\" that dismisses the interstitial",
+        "locators": [
+          {
+            "strategy": "role",
+            "value": "button",
+            "name": "Continue",
+            "note": "Interstitial dismiss control by role + accessible name."
+          }
+        ]
+      },
+      "max_applications": 2
+    }
+  ]
+}

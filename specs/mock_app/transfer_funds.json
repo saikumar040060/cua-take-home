@@ -1,0 +1,64 @@
+{
+  "capability_id": "mock_transfer_funds",
+  "name": "Transfer funds between two of a member's own accounts",
+  "goal": "Look up the member by member number, open their profile, and click 'Transfer Funds'. The From Account and To Account fields are dropdowns whose options are account numbers; select exactly the given from_account and to_account values by their account number, not by guessing a product name. Fill in the amount and post the transfer. Read back the confirmation reference after posting. This action is irreversible once posted.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "from_account",
+      "value": "712280-S00",
+      "description": "Account number to transfer from, exactly as shown in the From Account dropdown."
+    },
+    {
+      "name": "to_account",
+      "value": "712280-S01",
+      "description": "Account number to transfer to, exactly as shown in the To Account dropdown."
+    },
+    {
+      "name": "amount",
+      "value": "50.00",
+      "description": "Transfer amount in dollars."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_ref",
+      "description": "Confirmation reference shown after posting.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    },
+    {
+      "code": "insufficient_funds",
+      "text": "Insufficient funds",
+      "description": "The source account does not have enough available balance."
+    },
+    {
+      "code": "validation_rejected",
+      "text": "Please correct the following",
+      "description": "The transfer form rejected the submitted values."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 18
+}

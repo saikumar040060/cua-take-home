@@ -1,0 +1,48 @@
+{
+  "capability_id": "mock_close_account",
+  "name": "Close a member account with a zero balance",
+  "goal": "Look up the member by member number and open their profile to confirm the account with the given account_no is present and its balance is $0.00. There is no on-page link to close a specific account, so navigate directly to the close-account screen for this member and this account_no (the URL follows the pattern /member/{member_id}/accounts/{account_no}/close). Confirm the account's balance shown there is $0.00, then click Close Account. Read back the account number shown on the resulting confirmation screen.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "value": "712280-S03",
+      "description": "Exact zero-balance account number to close."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "closed_account_no",
+      "description": "The account number confirmed as closed."
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    },
+    {
+      "code": "nonzero_balance",
+      "text": "balance must be",
+      "description": "The account cannot be closed because it does not have a zero balance -- a legitimate business-rule rejection."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 14
+}

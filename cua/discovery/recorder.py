@@ -113,56 +113,95 @@ def _strip_run_specific(text: str | None, spec: GoalSpec) -> str | None:
     return text
 
 
+def _row_scoped_control_selector(element: ElementInfo) -> str | None:
+    """CSS fragment that identifies this control by tag + visible text/value,
+    for use inside a row-scoped selector. Returns None for element kinds
+    this doesn't know how to target this way (falls back to default
+    behavior rather than emit a wrong selector)."""
+    if element.tag in ("a", "button") and element.name:
+        return f'{element.tag}:text-is("{element.name}")'
+    if element.tag == "input" and element.name:
+        return f'input[value="{element.name}"]'
+    return None
+
+
 def _reanchor_on_declared_input(
     target: ElementTarget, element: ElementInfo, spec: GoalSpec
 ) -> ElementTarget:
-    """Fix the "adjacent-column-as-label" locator heuristic for real data
-    tables (every column is data; none of them is a durable label).
+    """Fix two variants of the same underlying problem: a locator built from
+    whatever's nearby in the DOM instead of the row's real identity.
 
-    ``build_locator_chain`` anchors a data-cell read on whatever text sits in
-    the immediately preceding column — correct for label:value forms, wrong
-    for a multi-column row keyed by a declared input (e.g. a Share ID
-    column), where that preceding column is itself just another *value* that
-    varies row to row. If any *other* cell in this row's captured text
+    1. **Data cells** — ``build_locator_chain`` anchors a cell read on
+       whatever text sits in the immediately preceding column, correct for
+       label:value forms, wrong for a multi-column data table (every column
+       is data; none of them is a durable label).
+    2. **Controls repeated once per row** — a "View"/"Edit"-style link or
+       button has the *same* accessible name in every row, so its role+name
+       locator is inherently ambiguous across rows and silently resolves to
+       whichever row the resolver's ambiguity/fallback handling happens to
+       land on (verified: a positional fallback here clicked a *different*
+       account's row than the one requested — wrong data, not a failure).
+
+    Both are fixed the same way: if any cell in this row's captured text
     matches a declared input's concrete value exactly, that is the row's
-    real stable identity — anchor on it instead, at the actual target
-    column, not the column next to whichever cell happened to be adjacent.
+    real stable identity — scope the locator to that specific row instead
+    of trusting DOM adjacency or an ambiguous accessible name.
 
-    The positional ``dom_path`` fallback is deliberately dropped once this
-    re-anchor applies. That fallback exists to survive minor markup drift
-    on the *same* row (a drift canary) — it is not a legitimate substitute
-    when the identity itself is genuinely absent (e.g. a share_id that
-    doesn't belong to this member). A purely structural path still matches
-    *some* row at that position regardless of whether the requested row
-    exists, which would silently return a different row's data instead of
-    failing — worse than an error. Keeping only the identity-anchored
-    locator means a nonexistent identity correctly fails resolution and
-    goes through the normal three-bucket triage instead.
+    The positional ``dom_path`` fallback is deliberately dropped once a
+    re-anchor applies, in both cases. That fallback exists to survive minor
+    markup drift on the *same* row (a drift canary) — it is not a
+    legitimate substitute when the identity itself is genuinely absent (a
+    value that doesn't belong to this member). A purely structural path
+    still matches *some* row at that position regardless of whether the
+    requested row exists, which would silently act on a different row
+    instead of failing — worse than an error. Keeping only the
+    identity-anchored locator means a nonexistent identity correctly fails
+    resolution and goes through the normal three-bucket triage instead.
     """
-    if element.role != "cell" or not element.row_texts or not element.col_index:
+    if not element.row_texts:
+        return target
+    if element.role == "cell" and (not element.col_index or element.label_source == "header"):
+        # A header-sourced label identifies a column, not a row (the text
+        # lives in a different row entirely) -- re-anchoring on a same-row
+        # sibling's value doesn't apply here; build_locator_chain already
+        # gives this case a purely positional locator, which is correct.
         return target
     for col, text in enumerate(element.row_texts, start=1):
-        if col == element.col_index:
+        if element.role == "cell" and col == element.col_index:
             continue
         match = next((p for p in spec.inputs if p.value and p.value == text), None)
         if match is None:
             continue
-        target.locators = [
-            Locator(
-                strategy=LocatorStrategy.CSS,
-                value=f'tr:has(td:text-is("{text}")) > td:nth-of-type({element.col_index})',
-                note=(
-                    f"Anchored on the '{match.name}' column (this row's real "
-                    "stable identity) rather than an adjacent value column. "
-                    "No positional fallback: a row keyed by this identity "
-                    "either exists or it doesn't -- there is no legitimate "
-                    "'same row, different structure' case to fall back to, "
-                    "and a purely structural path would silently resolve to "
-                    "a different row instead of failing correctly."
-                ),
-            )
-        ]
-        target.description = f"the value cell in the row where {match.name} is \"{text}\""
+        if element.role == "cell":
+            target.locators = [
+                Locator(
+                    strategy=LocatorStrategy.CSS,
+                    value=f'tr:has(td:text-is("{text}")) > td:nth-of-type({element.col_index})',
+                    note=(
+                        f"Anchored on the '{match.name}' column (this row's real "
+                        "stable identity) rather than an adjacent value column. "
+                        "No positional fallback -- see function docstring."
+                    ),
+                )
+            ]
+            target.description = f"the value cell in the row where {match.name} is \"{text}\""
+        else:
+            control = _row_scoped_control_selector(element)
+            if control is None:
+                continue
+            target.locators = [
+                Locator(
+                    strategy=LocatorStrategy.CSS,
+                    value=f'tr:has(td:text-is("{text}")) {control}',
+                    note=(
+                        f"Anchored on the '{match.name}' column so this control is "
+                        "resolved within the correct row, not the first/nearest row "
+                        "with a matching accessible name. No positional fallback -- "
+                        "see function docstring."
+                    ),
+                )
+            ]
+            target.description = f"the \"{element.name}\" control in the row where {match.name} is \"{text}\""
         break
     return target
 

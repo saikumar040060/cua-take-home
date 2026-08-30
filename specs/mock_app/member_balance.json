@@ -1,0 +1,48 @@
+{
+  "capability_id": "mock_member_balance",
+  "name": "Check the balance of a specific member account",
+  "goal": "Look up the member by member number and open their profile. The Accounts table has columns, in this exact left-to-right order: Acct No, Product, Balance, Opened, Status, History. A member can have several accounts. Find the ONE row whose Acct No column exactly matches the given account_no -- not the first row, not a guess. Once found, perform TWO SEPARATE reads against TWO DIFFERENT cells in that row: (1) read the Balance cell and output it as account_balance; (2) re-observe the page and read the Status cell (a different column than Balance) and output it as account_status. Do not read the same cell twice and do not confuse Balance with Status. If no row's Acct No matches account_no exactly, do not guess; call blocked.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number to check.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "value": "712280-S01",
+      "description": "Exact account number to read the balance/status of, as shown in the Acct No column.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "account_balance",
+      "description": "Balance of the account row whose Acct No matches account_no."
+    },
+    {
+      "name": "account_status",
+      "description": "Status (e.g. OPEN, HOLD, CLOSED) of the account row whose Acct No matches account_no."
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist in the core system."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 14
+}

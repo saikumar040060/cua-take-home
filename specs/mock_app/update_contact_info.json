@@ -1,0 +1,51 @@
+{
+  "capability_id": "mock_update_contact_info",
+  "name": "Update a member's phone and address",
+  "goal": "Look up the member by member number, open their profile, and click 'Update Contact Info'. Fill in the phone and address fields with the given values, replacing whatever was there, and click Save Changes. The confirmation banner is plain page text with no element reference, so it cannot be read directly. Instead, from the confirmation screen, go back to the member profile and read the phone number now shown there as a single labeled value -- this confirms the update actually took effect.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "phone",
+      "value": "(313) 555-0199",
+      "description": "New phone number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "address",
+      "value": "77 Riverside Dr, Detroit, MI 48226",
+      "description": "New mailing address.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmed_phone",
+      "description": "The phone number read back from the member profile after saving.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 16
+}

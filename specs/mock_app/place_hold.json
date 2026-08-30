@@ -1,0 +1,54 @@
+{
+  "capability_id": "mock_place_hold",
+  "name": "Place a restricted hold on a member account",
+  "goal": "Look up the member by member number, open their profile, and click 'Place Account Hold'. This is a restricted function. Select the given account_no from the Account dropdown by its exact account number, select the given reason from the Reason dropdown (exact option text), and click Place Hold. Read back the confirmation reference shown after posting. This action is irreversible once posted.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "value": "712280-S02",
+      "description": "Account number to place the hold on."
+    },
+    {
+      "name": "reason",
+      "value": "Suspected Fraud",
+      "description": "Hold reason, exact option text from the dropdown."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_ref",
+      "description": "Confirmation reference shown after the hold is posted.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    },
+    {
+      "code": "already_on_hold",
+      "text": "already has an active hold",
+      "description": "The account already has an active hold -- a legitimate rejection."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 14
+}

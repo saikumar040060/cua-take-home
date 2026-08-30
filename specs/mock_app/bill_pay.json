@@ -1,0 +1,59 @@
+{
+  "capability_id": "mock_bill_pay",
+  "name": "Pay a registered bill payee from a member's account",
+  "goal": "Look up the member by member number, open their profile, and click 'Pay a Bill'. Select the given account_no from the From Account dropdown by its exact account number, select the given payee_id from the Payee dropdown (match it to whichever option corresponds to that payee), enter the amount, and submit the payment. Read back the confirmation reference shown after submission.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number.",
+      "sensitivity": "identifier"
+    },
+    {
+      "name": "account_no",
+      "value": "712280-S01",
+      "description": "Account number to pay from."
+    },
+    {
+      "name": "payee_id",
+      "value": "PY5422",
+      "description": "Payee ID to select in the Payee dropdown."
+    },
+    {
+      "name": "amount",
+      "value": "45.00",
+      "description": "Payment amount in dollars."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "confirmation_ref",
+      "description": "Confirmation reference shown after the payment is submitted.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist."
+    },
+    {
+      "code": "insufficient_funds",
+      "text": "Insufficient funds",
+      "description": "The account does not have enough available balance for this payment."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 16
+}
