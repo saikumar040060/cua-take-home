@@ -31,6 +31,7 @@ from meridian_service.app import (
     _bind_system_credentials,
     _catalog_tools,
     _customer_profile,
+    _load_customer_home,
     _public_demo_route,
     app,
     customer_system,
@@ -110,6 +111,18 @@ def test_public_demo_routes_meridian_login_to_synthetic_backend(monkeypatch):
     assert profile["system"] == "mock_app"
     assert profile["member_id"] == "100987"
     assert profile["accounts"] == KNOWN_CUSTOMERS["100987"]["accounts"]
+
+
+def test_public_demo_home_uses_fast_synthetic_overview(monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    overview = _load_customer_home("100987")
+    assert overview["member_name"] == "Lee, Jordan"
+    assert [account["balance"] for account in overview["accounts"]] == [
+        "$8,420.17",
+        "$2,195.44",
+    ]
+    assert all(account["ok"] for account in overview["accounts"])
 
 
 def test_public_demo_router_handles_safe_catalog_and_balance_requests():

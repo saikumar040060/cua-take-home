@@ -119,10 +119,10 @@
   <div class="welcome">
     <h1>Welcome back{% if member_name %}, {{ member_name.split(',')[-1].strip() if ',' in member_name else member_name }}{% endif %}</h1>
     <p>Member {{ member_id }} — everything below is your own account only.</p>
-    {% if public_demo_synthetic %}<div class="demo-note"><b>Safe public demo:</b> all names, accounts, balances, and transactions shown here are synthetic. Read actions use the real recorded browser-automation pipeline; write actions stay disabled.</div>{% endif %}
+    {% if public_demo_synthetic %}<div class="demo-note"><b>Safe public demo:</b> all names, accounts, balances, and transactions shown here are synthetic. Assistant read requests use the real recorded browser-automation pipeline; write actions stay disabled.</div>{% endif %}
   </div>
 
-  <div class="section-head"><h2>Bank accounts</h2><span>{% if public_demo_synthetic %}Synthetic balances · verified through browser replay{% else %}Live balances · ask the assistant about any other account by ID{% endif %}</span></div>
+  <div class="section-head"><h2>Bank accounts</h2><span>{% if public_demo_synthetic %}Synthetic demo balances{% else %}Live balances · ask the assistant about any other account by ID{% endif %}</span></div>
   <div class="panel">
     {% for a in accounts %}
       <div class="acct-row">

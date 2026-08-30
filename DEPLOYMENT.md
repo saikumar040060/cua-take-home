@@ -44,9 +44,10 @@ rather than pulled from an env var.
    approve/deny/resume/abort — those still fail closed under
    `PUBLIC_DEMO_READ_ONLY=true` regardless of login).
 
-The public build runs home-page browser reads sequentially to bound peak
-Chromium memory on a small instance. Use separate replay workers and at least
-2 GB RAM per worker for sustained or concurrent production traffic.
+The public build serves its synthetic account overview directly from the
+bundled data set, then launches Chromium only for assistant capability runs.
+Use separate replay workers and at least 2 GB RAM per worker for sustained or
+concurrent production traffic.
 
 ### Local container
 

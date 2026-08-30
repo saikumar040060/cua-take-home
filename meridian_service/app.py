@@ -799,14 +799,45 @@ _HOME_CAPABILITIES: dict[str, dict[str, str]] = {
 
 
 def _load_customer_home(customer_id: str) -> dict[str, Any]:
-    """Fetch the logged-in member's name and a few real account cards via
-    deterministic browser replay. The hosted synthetic demo runs them one at
-    a time to keep Chromium memory bounded on a small instance; private
-    deployments retain the faster concurrent behavior."""
+    """Build the logged-in member's account overview.
+
+    The public synthetic overview comes from the bundled in-memory data set,
+    which is already trusted application state and avoids launching three
+    browsers during page navigation. Customer assistant requests still use
+    recorded deterministic browser replay and create employee-visible runs.
+    Private live-bank deployments retain the replay-backed overview.
+    """
     profile = _customer_profile(customer_id)
     system_key = profile["system"]
     backend_member_id = profile["member_id"]
     cfg = _HOME_CAPABILITIES[system_key]
+
+    if _public_demo_synthetic():
+        from mock_app.data import MEMBERS
+
+        member = MEMBERS.get(str(backend_member_id))
+        if member is not None:
+            account_by_id = {account.number: account for account in member.accounts}
+            return {
+                "member_name": member.name,
+                "accounts": [
+                    {
+                        "share_id": account_id,
+                        "balance": account_by_id[account_id].balance,
+                        "status": account_by_id[account_id].status,
+                        "ok": True,
+                    }
+                    if account_id in account_by_id
+                    else {
+                        "share_id": account_id,
+                        "balance": None,
+                        "status": None,
+                        "ok": False,
+                    }
+                    for account_id in profile.get("accounts", [])
+                ],
+            }
+
     specifications: list[tuple[str, Capability | None, dict[str, str]]] = []
 
     name_cap = get_capability(cfg["name_capability_id"], system_key)
@@ -832,26 +863,17 @@ def _load_customer_home(customer_id: str) -> dict[str, Any]:
         except (ParamError, RuntimeError):
             return None
 
-    outcomes: dict[str, dict[str, Any]] = {}
-    if _public_demo_synthetic():
-        for key, capability, raw_params in specifications:
-            state = launch(capability, raw_params)
-            outcomes[key] = (
-                _await_result(state.run_id, timeout_s=60.0)
-                if state else {"status": "error"}
-            )
-    else:
-        jobs = [
-            (key, launch(capability, raw_params))
-            for key, capability, raw_params in specifications
-        ]
-        outcomes = {
-            key: (
-                _await_result(state.run_id, timeout_s=60.0)
-                if state else {"status": "error"}
-            )
-            for key, state in jobs
-        }
+    jobs = [
+        (key, launch(capability, raw_params))
+        for key, capability, raw_params in specifications
+    ]
+    outcomes = {
+        key: (
+            _await_result(state.run_id, timeout_s=60.0)
+            if state else {"status": "error"}
+        )
+        for key, state in jobs
+    }
 
     member_name = None
     name_result = (outcomes.get("name") or {}).get("result") or {}
