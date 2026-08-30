@@ -3,12 +3,12 @@
   "capability_id": "meridian_funds_transfer",
   "version": 1,
   "name": "Transfer funds between two shares for a member",
-  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start a funds transfer. The From Share and To Share fields are dropdowns whose options are share IDs (e.g. '100987-S0001'); select exactly the given from_share and to_share values by their share ID, not by guessing a product name. Fill in the amount and memo as given. Go through the review step, confirm the details shown match what was entered, read the hidden per-transaction security token off the page, then post the transfer. This action is irreversible once posted. Read back the confirmation reference after posting.\n\nReturns: confirmation_ref \u2014 Confirmation reference shown after posting.. Possible business outcomes: member_not_found, insufficient_funds, validation_rejected, share_on_hold.",
+  "description": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start a funds transfer. The From Share and To Share fields are dropdowns whose options are share IDs (e.g. '100987-S0001'); select exactly the given from_share and to_share values by their share ID, not by guessing a product name. Fill in the amount and memo as given. Go through the review step, confirm the details shown match what was entered, read the hidden per-transaction security token off the page, then post the transfer. This action is irreversible once posted. Read back the confirmation reference after posting.\n\nReturns: confirmation_ref — Confirmation reference shown after posting.. Possible business outcomes: member_not_found, insufficient_funds, validation_rejected, share_on_hold, invalid_login.",
   "provenance": {
     "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and start a funds transfer. The From Share and To Share fields are dropdowns whose options are share IDs (e.g. '100987-S0001'); select exactly the given from_share and to_share values by their share ID, not by guessing a product name. Fill in the amount and memo as given. Go through the review step, confirm the details shown match what was entered, read the hidden per-transaction security token off the page, then post the transfer. This action is irreversible once posted. Read back the confirmation reference after posting.",
     "model": "claude-sonnet-4-5",
-    "run_id": "discovery-20260827T005917Z-bc7281",
-    "discovered_at": "2026-08-27T01:00:10.379281Z"
+    "run_id": "discovery-20260830T164050Z-0cdbaa",
+    "discovered_at": "2026-08-30T16:41:54.259331Z"
   },
   "entry_url_template": "https://web-sample.interface-hiring.com/",
   "inputs": [
@@ -47,9 +47,9 @@
     {
       "name": "to_share",
       "kind": "string",
-      "description": "Share ID to transfer to (as shown in the To Share dropdown, e.g. '100987-S0001-4').",
+      "description": "Share ID to transfer to (as shown in the To Share dropdown, e.g. '100987-S0001-12').",
       "required": true,
-      "example": "100987-S0001-4",
+      "example": "100987-S0001-12",
       "sensitivity": "public"
     },
     {
@@ -81,7 +81,7 @@
   "steps": [
     {
       "id": "s01_fill_operator_id",
-      "description": "Enter the operator ID to sign in",
+      "description": "Fill in operator ID to sign on",
       "action": "fill",
       "target": {
         "description": "the textbox \"Operator ID\" (input)",
@@ -96,7 +96,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -120,7 +120,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -131,14 +131,14 @@
     },
     {
       "id": "s02_fill_password",
-      "description": "Enter the {password} to sign in",
+      "description": "Fill in {password} to sign on",
       "action": "fill",
       "target": {
         "description": "the textbox \"Password\" (input)",
         "locators": [
           {
             "strategy": "css",
-            "value": "input[name=\"password\"]",
+            "value": "input[name=\"{password}\"]",
             "name": null,
             "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
           },
@@ -146,7 +146,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -162,7 +162,7 @@
           "locators": [
             {
               "strategy": "css",
-              "value": "input[name=\"password\"]",
+              "value": "input[name=\"{password}\"]",
               "name": null,
               "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
             },
@@ -170,7 +170,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -181,7 +181,7 @@
     },
     {
       "id": "s03_click_sign_on",
-      "description": "Click the Sign On button to authenticate",
+      "description": "Click Sign On button to log in to the system",
       "action": "click",
       "target": {
         "description": "the button \"Sign On\" (input)",
@@ -196,7 +196,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -215,7 +215,7 @@
     },
     {
       "id": "s04_click_member_inquiry_selection",
-      "description": "Navigate to Member Inquiry to look up the member by member number",
+      "description": "Click Member Inquiry / Selection to look up the member by member number",
       "action": "click",
       "target": {
         "description": "the link \"Member Inquiry / Selection\" (a)",
@@ -236,7 +236,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -255,7 +255,7 @@
     },
     {
       "id": "s05_fill_value",
-      "description": "Enter the member number to search for the member",
+      "description": "Enter the member ID to search for the member",
       "action": "fill",
       "target": {
         "description": "the textbox \"Value\" (input)",
@@ -270,7 +270,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -294,7 +294,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -305,7 +305,7 @@
     },
     {
       "id": "s06_click_search",
-      "description": "Click Search button to find the member",
+      "description": "Click Search button to search for the member",
       "action": "click",
       "target": {
         "description": "the button \"Search\" (input)",
@@ -320,7 +320,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -339,7 +339,7 @@
     },
     {
       "id": "s07_click_select",
-      "description": "Click Select to view the member's details and access transfer options",
+      "description": "Click Select link to view details for member {member_id}",
       "action": "click",
       "target": {
         "description": "the link \"Select\" (a)",
@@ -360,7 +360,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -370,16 +370,16 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+",
-        "text": "MEMBER",
+        "text": null,
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows MEMBER at the expected URL"
+        "description": "after click, the app shows the expected page at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s08_click_funds_transfer",
-      "description": "Click Funds Transfer to start the funds transfer process",
+      "description": "Click Funds Transfer link to start a funds transfer for this member",
       "action": "click",
       "target": {
         "description": "the link \"Funds Transfer\" (a)",
@@ -400,7 +400,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > a:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -410,16 +410,16 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+/transfer",
-        "text": "FUNDS TRANSFER",
+        "text": null,
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows FUNDS TRANSFER at the expected URL"
+        "description": "after click, the app shows the expected page at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s09_select_from_share",
-      "description": "Select the From Share as {from_share}",
+      "description": "Select the from_share '{from_share}' from the From Share dropdown",
       "action": "select",
       "target": {
         "description": "the combobox \"From Share\" (select)",
@@ -434,7 +434,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -458,7 +458,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -469,7 +469,7 @@
     },
     {
       "id": "s10_select_to_share",
-      "description": "Select the To Share as {to_share}",
+      "description": "Select the to_share '{to_share}' from the To Share dropdown",
       "action": "select",
       "target": {
         "description": "the combobox \"To Share\" (select)",
@@ -484,7 +484,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > select",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -508,7 +508,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > select",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -519,7 +519,7 @@
     },
     {
       "id": "s11_fill_amount",
-      "description": "Enter the amount to transfer",
+      "description": "Fill in the transfer amount",
       "action": "fill",
       "target": {
         "description": "the textbox \"Amount\" (input)",
@@ -534,7 +534,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -558,7 +558,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -569,7 +569,7 @@
     },
     {
       "id": "s12_fill_memo",
-      "description": "Enter the memo for the transfer",
+      "description": "Fill in the memo field with the provided memo text",
       "action": "fill",
       "target": {
         "description": "the textbox \"Memo\" (input)",
@@ -584,7 +584,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -608,7 +608,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -619,7 +619,7 @@
     },
     {
       "id": "s13_click_continue",
-      "description": "Click Continue to proceed to the review step",
+      "description": "Click Continue button to proceed to the review step",
       "action": "click",
       "target": {
         "description": "the button \"Continue\" (input)",
@@ -634,7 +634,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(5) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -653,7 +653,7 @@
     },
     {
       "id": "s14_click_post_transfer",
-      "description": "Click Post Transfer to execute the transfer after confirming the details match",
+      "description": "Click Post Transfer button to post the transfer",
       "action": "click",
       "target": {
         "description": "the button \"Post Transfer\" (input)",
@@ -668,7 +668,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > input:nth-of-type(6)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -687,7 +687,7 @@
     },
     {
       "id": "s15_read_confirmation",
-      "description": "Read the confirmation reference after posting the transfer",
+      "description": "Read the confirmation reference number after posting the transfer",
       "action": "read",
       "target": {
         "description": "the value cell next to \"Confirmation\"",
@@ -750,7 +750,7 @@
     },
     {
       "code": "insufficient_funds",
-      "description": "The from-share does not have enough available balance \u2014 a legitimate rejection.",
+      "description": "The from-share does not have enough available balance — a legitimate rejection.",
       "detector": {
         "url_pattern": null,
         "text": "insufficient",
@@ -772,7 +772,7 @@
     },
     {
       "code": "share_on_hold",
-      "description": "The source share is on HOLD and cannot be debited \u2014 a legitimate business-rule rejection, not a system failure.",
+      "description": "The source share is on HOLD and cannot be debited — a legitimate business-rule rejection, not a system failure.",
       "detector": {
         "url_pattern": null,
         "text": "HOLD and cannot be debited",
@@ -789,7 +789,7 @@
         "text": "Invalid",
         "target": null,
         "http_status": null,
-        "description": "page shows: 'Invalid' (HTTP 400)"
+        "description": "page shows: 'Invalid'"
       }
     }
   ],

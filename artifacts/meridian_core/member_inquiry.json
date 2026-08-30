@@ -3,12 +3,12 @@
   "capability_id": "meridian_member_inquiry",
   "version": 1,
   "name": "Look up a member by number or last name",
-  "description": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name and status as shown on the record screen.\n\nReturns: member_name \u2014 Full name shown on the member record., member_status \u2014 Status shown on the member record (e.g. active).. Possible business outcomes: member_not_found.",
+  "description": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name as shown on the record screen. Note: this system has no member-level status field, only per-share status (each share row has its own OPEN/HOLD status) -- do not read a share's status here and do not report one as if it were the member's overall status; this capability only confirms the member exists and returns their name.\n\nReturns: member_name — Full name shown on the member record.. Possible business outcomes: member_not_found, invalid_login.",
   "provenance": {
-    "goal": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name and status as shown on the record screen.",
+    "goal": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name as shown on the record screen. Note: this system has no member-level status field, only per-share status (each share row has its own OPEN/HOLD status) -- do not read a share's status here and do not report one as if it were the member's overall status; this capability only confirms the member exists and returns their name.",
     "model": "claude-sonnet-4-5",
-    "run_id": "discovery-20260827T122717Z-3e4877",
-    "discovered_at": "2026-08-27T12:27:46.028022Z"
+    "run_id": "discovery-20260830T163659Z-907f77",
+    "discovered_at": "2026-08-30T16:37:32.831187Z"
   },
   "entry_url_template": "https://web-sample.interface-hiring.com/",
   "inputs": [
@@ -44,19 +44,12 @@
       "description": "Full name shown on the member record.",
       "source_step_id": "s08_read_name",
       "sensitivity": "identifier"
-    },
-    {
-      "name": "member_status",
-      "kind": "string",
-      "description": "Status shown on the member record (e.g. active).",
-      "source_step_id": "s09_read_2_500_00",
-      "sensitivity": "public"
     }
   ],
   "steps": [
     {
       "id": "s01_fill_operator_id",
-      "description": "Fill in the operator ID field with the provided value '{operator_id}'",
+      "description": "Entering the operator ID {operator_id} to sign on",
       "action": "fill",
       "target": {
         "description": "the textbox \"Operator ID\" (input)",
@@ -71,7 +64,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -95,7 +88,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -106,14 +99,14 @@
     },
     {
       "id": "s02_fill_password",
-      "description": "Fill in the {password} field with the provided value '{password}'",
+      "description": "Entering the {password} to sign on",
       "action": "fill",
       "target": {
         "description": "the textbox \"Password\" (input)",
         "locators": [
           {
             "strategy": "css",
-            "value": "input[name=\"password\"]",
+            "value": "input[name=\"{password}\"]",
             "name": null,
             "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
           },
@@ -121,7 +114,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -137,7 +130,7 @@
           "locators": [
             {
               "strategy": "css",
-              "value": "input[name=\"password\"]",
+              "value": "input[name=\"{password}\"]",
               "name": null,
               "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
             },
@@ -145,7 +138,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -156,7 +149,7 @@
     },
     {
       "id": "s03_click_sign_on",
-      "description": "Click the Sign On button to authenticate and proceed to the main menu",
+      "description": "Clicking Sign On to authenticate and access the system",
       "action": "click",
       "target": {
         "description": "the button \"Sign On\" (input)",
@@ -171,7 +164,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -181,16 +174,16 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/menu",
-        "text": "MAIN MENU",
+        "text": "Main Menu",
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows MAIN MENU at the expected URL"
+        "description": "after click, the app shows Main Menu at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s04_click_member_inquiry_selection",
-      "description": "Navigate to Member Inquiry / Selection to search for the member by member number",
+      "description": "Clicking Member Inquiry / Selection to access the member lookup screen",
       "action": "click",
       "target": {
         "description": "the link \"Member Inquiry / Selection\" (a)",
@@ -211,7 +204,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -221,16 +214,16 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members",
-        "text": "Member Number",
+        "text": "Member Inquiry",
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows Member Number at the expected URL"
+        "description": "after click, the app shows Member Inquiry at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s05_fill_value",
-      "description": "Fill in the Value field with the member ID {member_id}",
+      "description": "Entering the member ID {member_id} to search for the member",
       "action": "fill",
       "target": {
         "description": "the textbox \"Value\" (input)",
@@ -245,7 +238,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -269,7 +262,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -280,7 +273,7 @@
     },
     {
       "id": "s06_click_search",
-      "description": "Click the Search button to search for the member with ID {member_id}",
+      "description": "Clicking Search to find the member with ID {member_id}",
       "action": "click",
       "target": {
         "description": "the button \"Search\" (input)",
@@ -295,7 +288,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -314,7 +307,7 @@
     },
     {
       "id": "s07_click_select",
-      "description": "Click the Select link to open the member record for member {member_id}",
+      "description": "Clicking Select to open the member record for member {member_id}",
       "action": "click",
       "target": {
         "description": "the link \"Select\" (a)",
@@ -335,7 +328,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -345,25 +338,25 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+",
-        "text": "Member Information",
+        "text": null,
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows Member Information at the expected URL"
+        "description": "after click, the app shows the expected page at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s08_read_name",
-      "description": "Read the member's full name from the Name field on the member record",
+      "description": "Reading the member's full name from the member record to satisfy the required output",
       "action": "read",
       "target": {
-        "description": "the value cell next to \"Name\"",
+        "description": "the value cell in the row where member_id is \"{member_id}\"",
         "locators": [
           {
             "strategy": "css",
-            "value": "tr:has(td:text-is(\"Name\")) > td:nth-of-type(4)",
+            "value": "tr:has(td:text-is(\"{member_id}\")) > td:nth-of-type(4)",
             "name": null,
-            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+            "note": "Primary for data-table rows keyed by an input: anchored on the 'member_id' column (this row's real stable identity) rather than an adjacent value column."
           },
           {
             "strategy": "dom_path",
@@ -381,67 +374,17 @@
         "url_pattern": null,
         "text": null,
         "target": {
-          "description": "the value cell next to \"Name\"",
+          "description": "the value cell in the row where member_id is \"{member_id}\"",
           "locators": [
             {
               "strategy": "css",
-              "value": "tr:has(td:text-is(\"Name\")) > td:nth-of-type(4)",
+              "value": "tr:has(td:text-is(\"{member_id}\")) > td:nth-of-type(4)",
               "name": null,
-              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
+              "note": "Primary for data-table rows keyed by an input: anchored on the 'member_id' column (this row's real stable identity) rather than an adjacent value column."
             },
             {
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > table:nth-of-type(1) > tbody > tr:nth-of-type(1) > td:nth-of-type(4)",
-              "name": null,
-              "note": "Last resort: structural path (drift canary)."
-            }
-          ]
-        },
-        "http_status": null,
-        "description": "the read target is present and stable"
-      },
-      "wait_timeout_ms": 5000
-    },
-    {
-      "id": "s09_read_2_500_00",
-      "description": "Read the member status from the first account status field as a representative status for the member",
-      "action": "read",
-      "target": {
-        "description": "the value cell next to \"$2,500.00\"",
-        "locators": [
-          {
-            "strategy": "css",
-            "value": "tr:has(td:text-is(\"$2,500.00\")) > td:nth-of-type(4)",
-            "name": null,
-            "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
-          },
-          {
-            "strategy": "dom_path",
-            "value": "body > table > tbody > tr:nth-of-type(3) > td > table:nth-of-type(2) > tbody > tr:nth-of-type(2) > td:nth-of-type(4)",
-            "name": null,
-            "note": "Last resort: structural path (drift canary)."
-          }
-        ]
-      },
-      "value_template": null,
-      "url_template": null,
-      "output_name": "member_status",
-      "risk": "safe",
-      "checkpoint": {
-        "url_pattern": null,
-        "text": null,
-        "target": {
-          "description": "the value cell next to \"$2,500.00\"",
-          "locators": [
-            {
-              "strategy": "css",
-              "value": "tr:has(td:text-is(\"$2,500.00\")) > td:nth-of-type(4)",
-              "name": null,
-              "note": "Primary for data cells: label-relative position. The label text is UI copy (stable); the value varies per run, so it must not be part of the locator."
-            },
-            {
-              "strategy": "dom_path",
-              "value": "body > table > tbody > tr:nth-of-type(3) > td > table:nth-of-type(2) > tbody > tr:nth-of-type(2) > td:nth-of-type(4)",
               "name": null,
               "note": "Last resort: structural path (drift canary)."
             }
@@ -456,7 +399,7 @@
   "business_outcomes": [
     {
       "code": "member_not_found",
-      "description": "No member record matches the given member number \u2014 a legitimate negative result.",
+      "description": "No member record matches the given member number — a legitimate negative result.",
       "detector": {
         "url_pattern": null,
         "text": "not found",
@@ -473,7 +416,7 @@
         "text": "Invalid",
         "target": null,
         "http_status": null,
-        "description": "page shows: 'Invalid' (HTTP 400)"
+        "description": "page shows: 'Invalid'"
       }
     }
   ],

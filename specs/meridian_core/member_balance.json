@@ -1,7 +1,7 @@
 {
   "capability_id": "meridian_member_balance",
-  "name": "Check a member's share balances",
-  "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open their record. The record shows a table of the member's shares. Read the balance of the FIRST share row shown in the table (i.e. the value cell for that specific row's balance -- not a column header, and not the whole table), and separately read that same first share's status (e.g. whether it is OPEN or on HOLD). These are two separate single-cell reads, each naming one declared output.",
+  "name": "Check the balance of a specific member share",
+  "goal": "Sign on to MERIDIAN CORE as the given operator, look up the member by member number, and open their record. The record shows a table with columns, in this exact left-to-right order: Share ID, Type, Balance, Status. A member can have many share rows. Find the ONE row whose Share ID column exactly matches the given share_id -- not the first row, not a guess. Once you have identified that row, perform TWO SEPARATE reads against TWO DIFFERENT cells in that same row: (1) read the Balance cell (3rd column, a dollar amount like '$40.00') and output it as share_balance; (2) re-observe the page and read the Status cell (4th column, immediately to the right of Balance, a word like 'OPEN' or 'HOLD') and output it as share_status. Balance and Status are two visually distinct cells in two different columns of the same row -- do not read the same cell twice, and do not report the Status text as the Balance value or vice versa. Before calling done, double check that share_balance looks like a dollar amount and share_status looks like a status word; if they are identical or the wrong shape, re-read the correct cell. If no row's Share ID matches share_id exactly, do not guess or substitute another row; call blocked and explain that the given share_id was not found on this member's record.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
     {
@@ -21,16 +21,22 @@
       "value": "100987",
       "description": "Member number to check.",
       "sensitivity": "identifier"
+    },
+    {
+      "name": "share_id",
+      "value": "100987-MMKT-7",
+      "description": "Exact Share ID to read the balance/status of, as shown in the Share ID column (e.g. '100987-MMKT-7').",
+      "sensitivity": "identifier"
     }
   ],
   "outputs": [
     {
-      "name": "first_share_balance",
-      "description": "Balance of the first share row shown on the member record."
+      "name": "share_balance",
+      "description": "Balance of the share row whose Share ID matches the given share_id."
     },
     {
-      "name": "first_share_status",
-      "description": "Status (e.g. OPEN or HOLD) of the first share row shown on the member record."
+      "name": "share_status",
+      "description": "Status (e.g. OPEN or HOLD) of the share row whose Share ID matches the given share_id."
     }
   ],
   "business_outcomes": [

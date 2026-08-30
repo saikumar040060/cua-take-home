@@ -208,8 +208,8 @@ all 7 capabilities in the catalog panel.
 Point at the dashboard's catalog panel: all 7 required functions are recorded and callable right now, each with a typed signature. Example:
 
 ```
-meridian_member_balance(member_id)
-  -> {first_share_balance, first_share_status}
+meridian_member_balance(member_id, share_id)
+  -> {share_balance, share_status}
 ```
 
 ### Step 2 — Chat: balance check (success path)
@@ -217,16 +217,16 @@ meridian_member_balance(member_id)
 In the chat box, type:
 
 ```
-check the balance for member 100987
+check the balance of share 100987-MMKT-7 for member 100987
 ```
 
-One LLM call routes the plain-language request to a capability name and typed arguments — it never touches the browser. Everything after that is deterministic replay of a recorded artifact, no model in the loop.
+One LLM call routes the plain-language request to a capability name and typed arguments — it never touches the browser. Everything after that is deterministic replay of a recorded artifact, no model in the loop. `member_balance` reads the specific share named by `share_id`, not just whichever share happens to be listed first — verified live across members with 12+ shares.
 
 Expected reply (as of the last test — numbers may differ if the environment reset):
 
 ```
 bot: Done. meridian_member_balance succeeded:
-first_share_balance=$52.00, first_share_status=OPEN
+share_balance=$40.00, share_status=OPEN
 ```
 
 ### Step 3 — Chat: funds transfer (escalation path)
@@ -276,7 +276,7 @@ Type:
 place a hold on member 103001's share, reason routine review
 ```
 
-This exercises the supervisor-override path — gated differently from teller-level actions, and irreversible, so it's a second, distinct risky-action test. Real recorded outcome: share `103001-MMKT-3`, confirmation reference `CN480377`.
+This exercises the supervisor-override path — gated differently from teller-level actions, and irreversible, so it's a second, distinct risky-action test. Real recorded outcome: share `103001-MMKT-2`, confirmation reference `CN480159`.
 
 ### Step 5 — Quick coverage flex (only if time allows)
 
@@ -284,7 +284,7 @@ This exercises the supervisor-override path — gated differently from teller-le
 look up member 100234
 ```
 
-Real recorded result: `member_name=Lovelace, Ada`, `member_status=OPEN`. This is the 7th function, read-only member lookup. Skip this step if short on time — Steps 1–4 already prove the important things.
+Real recorded result: `member_name=Lovelace, Ada`. `member_inquiry` returns only the member's name — this legacy system has no member-level status field, only per-share status (that's what `member_balance` is for); an earlier version of this capability approximated a "member status" from whichever share happened to be listed first, which silently broke once that member's first share stopped being the OPEN one. This is the 7th function, read-only member lookup. Skip this step if short on time — Steps 1–4 already prove the important things.
 
 ### Step 6 — An exceptional state (proves the 3-bucket taxonomy)
 

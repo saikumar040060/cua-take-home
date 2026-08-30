@@ -3,12 +3,12 @@
   "capability_id": "meridian_place_account_hold",
   "version": 1,
   "name": "Place a hold on a member's share",
-  "description": "Sign on to MERIDIAN CORE as the given operator (a supervisor -- this is a supervisor-gated, restricted action requiring override). Look up the member by member number and open their record. The 'share' input below is only a placeholder -- the exact share IDs for this member are not known in advance, so ignore its literal text for selection. Instead, read the member's shares list, confirm this member has no share already on HOLD (choose a different member if they do), and select the FIRST share whose status is OPEN, using its exact share ID as shown in the hold-target dropdown option -- not a guessed product name. Start placing a hold on that share. The 'reason_code' and 'notes' inputs describe the intent but are not guaranteed to match exact on-screen text: from the actual reason-code dropdown, pick whichever real option most closely matches 'routine review' (or the closest available reason code shown), and enter the given notes text into the free-text notes field if one is present. Go through the review step, provide the supervisor override where prompted, read the hidden per-transaction security token off the page, then post it. This action is risky and irreversible once posted. Read back the confirmation reference after posting.\n\nReturns: confirmation_ref \u2014 Confirmation reference shown after posting.. Possible business outcomes: member_not_found, permission_denied.",
+  "description": "Sign on to MERIDIAN CORE as the given operator (a supervisor -- this is a supervisor-gated, restricted action requiring override). Look up the member by member number and open their record. The 'share' input below is only a placeholder -- the exact share IDs for this member are not known in advance, so ignore its literal text for selection. Instead, read the member's shares list, confirm this member has no share already on HOLD (choose a different member if they do), and select the FIRST share whose status is OPEN, using its exact share ID as shown in the hold-target dropdown option -- not a guessed product name. Start placing a hold on that share. The 'reason_code' and 'notes' inputs describe the intent but are not guaranteed to match exact on-screen text: from the actual reason-code dropdown, pick whichever real option most closely matches 'routine review' (or the closest available reason code shown), and enter the given notes text into the free-text notes field if one is present. Go through the review step, provide the supervisor override where prompted, read the hidden per-transaction security token off the page, then post it. This action is risky and irreversible once posted. Read back the confirmation reference after posting.\n\nReturns: confirmation_ref — Confirmation reference shown after posting.. Possible business outcomes: member_not_found, permission_denied, invalid_login.",
   "provenance": {
     "goal": "Sign on to MERIDIAN CORE as the given operator (a supervisor -- this is a supervisor-gated, restricted action requiring override). Look up the member by member number and open their record. The 'share' input below is only a placeholder -- the exact share IDs for this member are not known in advance, so ignore its literal text for selection. Instead, read the member's shares list, confirm this member has no share already on HOLD (choose a different member if they do), and select the FIRST share whose status is OPEN, using its exact share ID as shown in the hold-target dropdown option -- not a guessed product name. Start placing a hold on that share. The 'reason_code' and 'notes' inputs describe the intent but are not guaranteed to match exact on-screen text: from the actual reason-code dropdown, pick whichever real option most closely matches 'routine review' (or the closest available reason code shown), and enter the given notes text into the free-text notes field if one is present. Go through the review step, provide the supervisor override where prompted, read the hidden per-transaction security token off the page, then post it. This action is risky and irreversible once posted. Read back the confirmation reference after posting.",
     "model": "claude-sonnet-4-5",
-    "run_id": "discovery-20260827T013228Z-8ea70c",
-    "discovered_at": "2026-08-27T01:33:22.045002Z"
+    "run_id": "discovery-20260830T164841Z-131405",
+    "discovered_at": "2026-08-30T16:49:37.009114Z"
   },
   "entry_url_template": "https://web-sample.interface-hiring.com/",
   "inputs": [
@@ -73,7 +73,7 @@
   "steps": [
     {
       "id": "s01_fill_operator_id",
-      "description": "Enter the operator ID for the supervisor account",
+      "description": "Entering the operator ID '{operator_id}' as provided",
       "action": "fill",
       "target": {
         "description": "the textbox \"Operator ID\" (input)",
@@ -88,7 +88,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -112,7 +112,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -123,14 +123,14 @@
     },
     {
       "id": "s02_fill_password",
-      "description": "Enter the {password} for the supervisor account",
+      "description": "Entering the {password} for {operator_id} operator",
       "action": "fill",
       "target": {
         "description": "the textbox \"Password\" (input)",
         "locators": [
           {
             "strategy": "css",
-            "value": "input[name=\"password\"]",
+            "value": "input[name=\"{password}\"]",
             "name": null,
             "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
           },
@@ -138,7 +138,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -154,7 +154,7 @@
           "locators": [
             {
               "strategy": "css",
-              "value": "input[name=\"password\"]",
+              "value": "input[name=\"{password}\"]",
               "name": null,
               "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
             },
@@ -162,7 +162,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -173,7 +173,7 @@
     },
     {
       "id": "s03_click_sign_on",
-      "description": "Click Sign On button to authenticate as {operator_id}",
+      "description": "Clicking Sign On to authenticate as {operator_id}",
       "action": "click",
       "target": {
         "description": "the button \"Sign On\" (input)",
@@ -188,7 +188,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -206,29 +206,29 @@
       "wait_timeout_ms": 5000
     },
     {
-      "id": "s04_click_member_inquiry_selection",
-      "description": "Navigate to Member Inquiry to look up member {member_id}",
+      "id": "s04_click_member_inquiry",
+      "description": "Clicking Member Inquiry to look up member {member_id}",
       "action": "click",
       "target": {
-        "description": "the link \"Member Inquiry / Selection\" (a)",
+        "description": "the link \"Member Inquiry\" (a)",
         "locators": [
           {
             "strategy": "role",
             "value": "link",
-            "name": "Member Inquiry / Selection",
+            "name": "Member Inquiry",
             "note": "Primary: role + accessible name; closest to human perception, survives markup refactors."
           },
           {
             "strategy": "text",
-            "value": "Member Inquiry / Selection",
+            "value": "Member Inquiry",
             "name": null,
             "note": "Fallback: visible link text; stable until copy changes."
           },
           {
             "strategy": "dom_path",
-            "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > a",
+            "value": "body > table > tbody > tr:nth-of-type(2) > td > font > a:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -247,7 +247,7 @@
     },
     {
       "id": "s05_fill_value",
-      "description": "Enter the member ID to search for",
+      "description": "Entering member number {member_id} to look up the member",
       "action": "fill",
       "target": {
         "description": "the textbox \"Value\" (input)",
@@ -262,7 +262,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -286,7 +286,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(1)",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -297,7 +297,7 @@
     },
     {
       "id": "s06_click_search",
-      "description": "Click Search to find member {member_id}",
+      "description": "Clicking Search to look up member {member_id}",
       "action": "click",
       "target": {
         "description": "the button \"Search\" (input)",
@@ -312,7 +312,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input:nth-of-type(2)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -331,7 +331,7 @@
     },
     {
       "id": "s07_click_select",
-      "description": "Select the member record for Dorothy Vaughan ({member_id}) to view details",
+      "description": "Clicking Select to open member {member_id}'s record",
       "action": "click",
       "target": {
         "description": "the link \"Select\" (a)",
@@ -352,7 +352,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > table > tbody > tr:nth-of-type(2) > td:nth-of-type(4) > a",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -362,16 +362,16 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+",
-        "text": "SHARES",
+        "text": "Vaughan, Dorothy",
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows SHARES at the expected URL"
+        "description": "after click, the app shows Vaughan, Dorothy at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s08_click_place_account_hold",
-      "description": "Click Place Account Hold to start placing a hold on the first OPEN share ({member_id}-MMKT-3)",
+      "description": "Clicking Place Account Hold to start the hold process. The first OPEN share is {member_id}-MMKT-2.",
       "action": "click",
       "target": {
         "description": "the link \"Place Account Hold\" (a)",
@@ -392,7 +392,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > a:nth-of-type(4)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -402,16 +402,16 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/members/[^/?#]+/hold",
-        "text": "PLACE ACCOUNT HOLD",
+        "text": null,
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows PLACE ACCOUNT HOLD at the expected URL"
+        "description": "after click, the app shows the expected page at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s09_select_share",
-      "description": "Select the first OPEN share {member_id}-MMKT-3 from the dropdown",
+      "description": "Selecting the first OPEN share ({member_id}-MMKT-2) from the dropdown",
       "action": "select",
       "target": {
         "description": "the combobox \"Share\" (select)",
@@ -426,11 +426,11 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
-      "value_template": "{member_id}-MMKT-3",
+      "value_template": "{member_id}-MMKT-2",
       "url_template": null,
       "output_name": null,
       "risk": "safe",
@@ -450,7 +450,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > select",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -461,7 +461,7 @@
     },
     {
       "id": "s10_select_reason_code",
-      "description": "Select LEGAL reason code as it's the closest match to 'routine review' from the available options (FRAUD, LEGAL, DECEASED)",
+      "description": "Selecting LEGAL reason code as the closest match to 'routine review' among the available options (FRAUD, LEGAL, DECEASED)",
       "action": "select",
       "target": {
         "description": "the combobox \"Reason Code\" (select)",
@@ -476,7 +476,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > select",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -500,7 +500,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > select",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -511,7 +511,7 @@
     },
     {
       "id": "s11_fill_notes",
-      "description": "Enter the notes text as specified in the input parameters",
+      "description": "Entering the notes text as provided",
       "action": "fill",
       "target": {
         "description": "the textbox \"Notes\" (input)",
@@ -526,7 +526,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -550,7 +550,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(3) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -561,7 +561,7 @@
     },
     {
       "id": "s12_click_continue",
-      "description": "Click Continue to proceed to the review step",
+      "description": "Clicking Continue to proceed to the review step",
       "action": "click",
       "target": {
         "description": "the button \"Continue\" (input)",
@@ -576,7 +576,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -595,7 +595,7 @@
     },
     {
       "id": "s13_click_apply_hold",
-      "description": "Click Apply Hold button to proceed with the hold application and trigger supervisor override",
+      "description": "Clicking Apply Hold to proceed with placing the hold, which should trigger the supervisor override prompt",
       "action": "click",
       "target": {
         "description": "the button \"Apply Hold\" (input)",
@@ -610,7 +610,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(3) > td > form > input:nth-of-type(5)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -629,7 +629,7 @@
     },
     {
       "id": "s14_read_confirmation",
-      "description": "Read the confirmation reference number for the hold application",
+      "description": "Reading the confirmation reference number shown after posting the hold",
       "action": "read",
       "target": {
         "description": "the value cell next to \"Confirmation\"",
@@ -692,7 +692,7 @@
     },
     {
       "code": "permission_denied",
-      "description": "A non-supervisor operator attempted this action; supervisor override is required \u2014 a legitimate rejection, not a system failure.",
+      "description": "A non-supervisor operator attempted this action; supervisor override is required — a legitimate rejection, not a system failure.",
       "detector": {
         "url_pattern": null,
         "text": "override",
@@ -709,7 +709,7 @@
         "text": "Invalid",
         "target": null,
         "http_status": null,
-        "description": "page shows: 'Invalid' (HTTP 400)"
+        "description": "page shows: 'Invalid'"
       }
     }
   ],

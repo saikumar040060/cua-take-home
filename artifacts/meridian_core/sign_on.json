@@ -3,12 +3,12 @@
   "capability_id": "meridian_sign_on",
   "version": 1,
   "name": "Sign on to MERIDIAN CORE",
-  "description": "Sign on to the MERIDIAN CORE credit-union servicing console using the given operator ID and password (select a branch if the sign-on screen asks for one), and reach the member-servicing home/menu screen. Confirm the signed-in operator's role is shown somewhere on the landing screen.\n\nReturns: landing_screen \u2014 Name/title of the screen reached after sign-on (proves session is active).. Possible business outcomes: invalid_login.",
+  "description": "Sign on to the MERIDIAN CORE credit-union servicing console using the given operator ID and password (select a branch if the sign-on screen asks for one), and reach the member-servicing home/menu screen. Confirm the signed-in operator's role is shown somewhere on the landing screen.\n\nReturns: landing_screen — Name/title of the screen reached after sign-on (proves session is active).. Possible business outcomes: invalid_login.",
   "provenance": {
     "goal": "Sign on to the MERIDIAN CORE credit-union servicing console using the given operator ID and password (select a branch if the sign-on screen asks for one), and reach the member-servicing home/menu screen. Confirm the signed-in operator's role is shown somewhere on the landing screen.",
     "model": "claude-sonnet-4-5",
-    "run_id": "discovery-20260827T003938Z-305ea2",
-    "discovered_at": "2026-08-27T00:39:57.657477Z"
+    "run_id": "discovery-20260830T163141Z-eeb9e2",
+    "discovered_at": "2026-08-30T16:31:53.527782Z"
   },
   "entry_url_template": "https://web-sample.interface-hiring.com/",
   "inputs": [
@@ -41,7 +41,7 @@
   "steps": [
     {
       "id": "s01_fill_operator_id",
-      "description": "Fill in the Operator ID field with the provided value '{operator_id}'",
+      "description": "Fill in the operator ID field with the provided value '{operator_id}'",
       "action": "fill",
       "target": {
         "description": "the textbox \"Operator ID\" (input)",
@@ -56,7 +56,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -80,7 +80,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(1) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -91,14 +91,14 @@
     },
     {
       "id": "s02_fill_password",
-      "description": "Fill in the Password field with the provided value '{password}'",
+      "description": "Fill in the {password} field with the provided value '{password}'",
       "action": "fill",
       "target": {
         "description": "the textbox \"Password\" (input)",
         "locators": [
           {
             "strategy": "css",
-            "value": "input[name=\"password\"]",
+            "value": "input[name=\"{password}\"]",
             "name": null,
             "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
           },
@@ -106,7 +106,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -122,7 +122,7 @@
           "locators": [
             {
               "strategy": "css",
-              "value": "input[name=\"password\"]",
+              "value": "input[name=\"{password}\"]",
               "name": null,
               "note": "Fallback: form-field name attribute; stable in server-rendered apps (server depends on it)."
             },
@@ -130,7 +130,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(2) > td:nth-of-type(2) > input",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -141,7 +141,7 @@
     },
     {
       "id": "s03_click_sign_on",
-      "description": "Click the Sign On button to authenticate with the provided credentials and reach the member-servicing home screen",
+      "description": "Click the Sign On button to authenticate and proceed to the member-servicing screen",
       "action": "click",
       "target": {
         "description": "the button \"Sign On\" (input)",
@@ -156,7 +156,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > form > table > tbody > tr:nth-of-type(4) > td:nth-of-type(2) > input",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -166,16 +166,16 @@
       "risk": "safe",
       "checkpoint": {
         "url_pattern": "https://web\\-sample\\.interface\\-hiring\\.com/menu",
-        "text": null,
+        "text": "Main Menu",
         "target": null,
         "http_status": null,
-        "description": "after click, the app shows the expected page at the expected URL"
+        "description": "after click, the app shows Main Menu at the expected URL"
       },
       "wait_timeout_ms": 5000
     },
     {
       "id": "s04_read_main_menu",
-      "description": "Read the landing screen title 'Main Menu' which confirms the session is active and identifies the screen reached after sign-on",
+      "description": "Read the landing screen title/name to confirm we've reached the member-servicing menu",
       "action": "read",
       "target": {
         "description": "the link \"Main Menu\" (a)",
@@ -196,7 +196,7 @@
             "strategy": "dom_path",
             "value": "body > table > tbody > tr:nth-of-type(2) > td > font > a:nth-of-type(1)",
             "name": null,
-            "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+            "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
           }
         ]
       },
@@ -226,7 +226,7 @@
               "strategy": "dom_path",
               "value": "body > table > tbody > tr:nth-of-type(2) > td > font > a:nth-of-type(1)",
               "name": null,
-              "note": "Last resort: structural path. Brittle by design \u2014 resolving here is logged as UI-drift warning."
+              "note": "Last resort: structural path. Brittle by design — resolving here is logged as UI-drift warning."
             }
           ]
         },
@@ -239,13 +239,13 @@
   "business_outcomes": [
     {
       "code": "invalid_login",
-      "description": "Bad operator ID or password \u2014 a legitimate rejection, not a system failure.",
+      "description": "Bad operator ID or password — a legitimate rejection, not a system failure.",
       "detector": {
         "url_pattern": null,
         "text": "Invalid",
         "target": null,
         "http_status": null,
-        "description": "page shows: 'Invalid' (HTTP 400)"
+        "description": "page shows: 'Invalid'"
       }
     }
   ],

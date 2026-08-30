@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MERIDIAN — Find My Account</title>
+<style>
+  :root { color-scheme:light; --navy:#00091d; --navy-3:#1c3364; --blue:#093eb0; --gold:#fdcd48; --gold-ink:#3a2a00; --line:#dfe6f5; --ink:#0d1526; --muted:#5c6a85; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; color:var(--ink); background:linear-gradient(160deg,var(--navy),var(--navy-3)); font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  header { padding:18px 26px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; color:#fff; text-decoration:none; width:fit-content; }
+  .brand .mark { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:linear-gradient(135deg,var(--blue),var(--navy-3)); color:var(--gold); font-weight:800; }
+  main { flex:1; display:grid; place-items:center; padding:20px; }
+  .card { width:100%; max-width:440px; background:#fff; border-radius:18px; padding:30px 28px; box-shadow:0 30px 70px rgba(0,4,20,.35); }
+  h1 { margin:0 0 10px; font-size:22px; color:var(--navy); letter-spacing:-.02em; }
+  .card > p { margin:0 0 20px; color:var(--muted); font-size:13.5px; }
+  .members { list-style:none; margin:0 0 22px; padding:0; display:grid; gap:8px; }
+  .members li { display:flex; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:10px; padding:10px 13px; font-weight:700; color:var(--navy); font-size:14px; }
+  .members li span.hint { font-weight:500; color:var(--muted); font-size:12px; }
+  .btn { display:block; text-align:center; width:100%; border:0; border-radius:999px; padding:12px; background:var(--gold); color:var(--gold-ink); font-weight:800; font-size:14px; cursor:pointer; text-decoration:none; }
+  .foot-link { display:block; text-align:center; margin-top:16px; font-size:13px; }
+  .foot-link a { color:var(--blue); font-weight:700; text-decoration:none; }
+</style>
+</head>
+<body>
+<header><a class="brand" href="/customer"><div class="mark">M</div>MERIDIAN</a></header>
+<main>
+  <div class="card">
+    <h1>Find my account</h1>
+    <p>This demo environment doesn't create brand-new members — your bank sets those up. If you're one of the members already on file, log in below with your member ID and the demo password <b>password</b>.</p>
+    <ul class="members">
+      {% for m in known_member_ids %}
+        <li>{{ m }}<span class="hint">demo member</span></li>
+      {% endfor %}
+    </ul>
+    <a class="btn" href="/customer/login">Continue to log in →</a>
+    <div class="foot-link">Not sure which is yours? <a href="/customer/login">Just try logging in</a> — you'll be told if it's not recognized.</div>
+  </div>
+</main>
+</body>
+</html>

@@ -1,7 +1,7 @@
 {
   "capability_id": "meridian_member_inquiry",
   "name": "Look up a member by number or last name",
-  "goal": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name and status as shown on the record screen.",
+  "goal": "Sign on to MERIDIAN CORE as the given operator. The member lookup screen supports searching either by member number or by last name; search using the given member number, since it is the unambiguous identifier, and open that member's record. Read back the member's full name as shown on the record screen. Note: this system has no member-level status field, only per-share status (each share row has its own OPEN/HOLD status) -- do not read a share's status here and do not report one as if it were the member's overall status; this capability only confirms the member exists and returns their name.",
   "entry_url": "https://web-sample.interface-hiring.com/",
   "inputs": [
     {
@@ -28,10 +28,6 @@
       "name": "member_name",
       "description": "Full name shown on the member record.",
       "sensitivity": "identifier"
-    },
-    {
-      "name": "member_status",
-      "description": "Status shown on the member record (e.g. active)."
     }
   ],
   "business_outcomes": [

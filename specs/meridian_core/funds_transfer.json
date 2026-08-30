@@ -29,8 +29,8 @@
     },
     {
       "name": "to_share",
-      "value": "100987-S0001-4",
-      "description": "Share ID to transfer to (as shown in the To Share dropdown, e.g. '100987-S0001-4')."
+      "value": "100987-S0001-12",
+      "description": "Share ID to transfer to (as shown in the To Share dropdown, e.g. '100987-S0001-12')."
     },
     {
       "name": "amount",

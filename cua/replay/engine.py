@@ -152,7 +152,7 @@ class ReplayEngine:
         # -- resolve -------------------------------------------------------
         handle = None
         if step.target is not None:
-            resolved = self._resolve_with_classification(step, report)
+            resolved = self._resolve_with_classification(step, report, params)
             if isinstance(resolved, (ReplayResult,)):
                 report.duration_ms = int((time.monotonic() - t0) * 1000)
                 return resolved
@@ -213,10 +213,11 @@ class ReplayEngine:
             )
 
         # -- verify --------------------------------------------------------
-        if not probe_holds(self.page, step.checkpoint, step.wait_timeout_ms):
+        checkpoint = self._substitute_probe(step.checkpoint, params)
+        if not probe_holds(self.page, checkpoint, step.wait_timeout_ms):
             terminal = self._classify_or_fail(
                 step, report,
-                expected=step.checkpoint.description,
+                expected=checkpoint.description,
                 observed=self._observed_summary(),
             )
             report.duration_ms = int((time.monotonic() - t0) * 1000)
@@ -230,12 +231,15 @@ class ReplayEngine:
         )
         return None
 
-    def _resolve_with_classification(self, step: Step, report: StepReport):
+    def _resolve_with_classification(
+        self, step: Step, report: StepReport, params: dict[str, str]
+    ):
         """Resolve the step target; on failure run the three-bucket triage."""
+        target = self._substitute_target(step.target, params)
         for attempt in (1, 2):
             try:
                 handle, rank, describe = resolve_target(
-                    self.page, step.target, timeout_ms=step.wait_timeout_ms
+                    self.page, target, timeout_ms=step.wait_timeout_ms
                 )
                 report.locator_used = describe
                 report.locator_rank = rank
@@ -250,7 +254,7 @@ class ReplayEngine:
             except ResolutionError as exc:
                 terminal = self._classify_or_fail(
                     step, report,
-                    expected=f"exactly one visible match for {step.target.description}",
+                    expected=f"exactly one visible match for {target.description}",
                     observed="; ".join(exc.attempts) or "no locator matched",
                     allow_retry=(attempt == 1),
                 )
@@ -258,6 +262,34 @@ class ReplayEngine:
                     continue  # a recovery rule fired — retry resolution once
                 return terminal
         return terminal  # pragma: no cover
+
+    def _substitute_target(
+        self, target: "ElementTarget | None", params: dict[str, str]
+    ) -> "ElementTarget | None":
+        """Fill '{param}' placeholders recorded into locator text (e.g. a
+        data-table row anchored on a declared input's value) with the
+        current invocation's concrete params — the same templating
+        ``value_template``/``url_template`` already get, extended to
+        locators now that a locator can legitimately reference an input."""
+        if target is None:
+            return None
+        substituted = target.model_copy(deep=True)
+        substituted.description = self._substitute(substituted.description, params)
+        for locator in substituted.locators:
+            locator.value = self._substitute(locator.value, params)
+            if locator.name:
+                locator.name = self._substitute(locator.name, params)
+        return substituted
+
+    def _substitute_probe(self, probe, params: dict[str, str]):
+        """Same substitution, applied to a StateProbe's optional target
+        (used by fill/select/read checkpoints that assert the control is
+        still present) — a no-op copy when the probe has no target."""
+        if probe.target is None:
+            return probe
+        substituted = probe.model_copy(deep=True)
+        substituted.target = self._substitute_target(substituted.target, params)
+        return substituted
 
     # ------------------------------------------------- three-bucket triage
 

@@ -16,7 +16,7 @@ Recording the actual capabilities surfaced three categories of friction, all res
 
 `meridian_service/app.py` exposes the recorded capabilities as plain HTTP:
 
-* `GET /api/capabilities` — the customer-safe catalog: each capability's `capability_id`, human-readable signature (e.g. `meridian_member_balance(member_id) -> {first_share_balance, first_share_status}`), typed inputs/outputs, declared business outcomes, and confirmation requirement. Infrastructure-owned legacy credentials are deliberately omitted.
+* `GET /api/capabilities` — the customer-safe catalog: each capability's `capability_id`, human-readable signature (e.g. `meridian_member_balance(member_id, share_id) -> {share_balance, share_status}`), typed inputs/outputs, declared business outcomes, and confirmation requirement. Infrastructure-owned legacy credentials are deliberately omitted.
 * `POST /api/capabilities/<id>/invoke` — runs the real `ReplayEngine` in a background thread (Playwright's sync API requires one dedicated thread per session, the same pattern used elsewhere for this project) and returns a `run_id` immediately; the caller polls `GET /api/runs/<run_id>` for status (`running` / `awaiting_human` / `done` / `error`) and, on completion, the same structured result shape `ReplayResult` already produces (`status`, `outputs`, `business_outcome`, `failure`, `recoveries`).
 * `POST /api/runs/<run_id>/command` — feeds a command (`look`, `approve`, `deny`, `click <ref>`, ...) into the paused run's live `OperatorConsole`, exactly like the terminal console, just over HTTP.
 

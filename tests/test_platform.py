@@ -127,14 +127,24 @@ def test_public_demo_blocks_mutations_before_execution(monkeypatch):
 
 
 def test_meridian_mutations_have_only_commit_actions_marked_risky():
+    """Each mutating capability must mark exactly one step RISKY, and it
+    must be the actual commit/post click -- not a navigation link into the
+    flow. Step id *numbers* legitimately shift across re-recordings (they
+    depend on how many actions a given discovery run kept), so this checks
+    the stable part: there is exactly one risky step, it's a click, and its
+    id names the real commit action."""
     expected = {
-        "funds_transfer.json": {"s14_click_post_transfer"},
-        "place_account_hold.json": {"s13_click_apply_hold"},
-        "open_new_share.json": {"s13_click_open_share"},
-        "update_member_info.json": {"s12_click_save_changes"},
+        "funds_transfer.json": "click_post_transfer",
+        "place_account_hold.json": "click_apply_hold",
+        "open_new_share.json": "click_open_share",
+        "update_member_info.json": "click_save_changes",
     }
-    for filename, expected_steps in expected.items():
+    for filename, expected_suffix in expected.items():
         path = ROOT / "artifacts" / "meridian_core" / filename
         capability = Capability.model_validate_json(path.read_text())
-        risky = {step.id for step in capability.steps if step.risk.value == "risky"}
-        assert risky == expected_steps
+        risky = [step for step in capability.steps if step.risk.value == "risky"]
+        assert len(risky) == 1, f"{filename}: expected exactly one risky step, got {risky}"
+        assert risky[0].id.endswith(expected_suffix), (
+            f"{filename}: risky step {risky[0].id!r} does not match the "
+            f"expected commit action {expected_suffix!r}"
+        )

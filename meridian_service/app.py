@@ -51,7 +51,16 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(PROJECT_DIR / ".env")
 
-from flask import Flask, g, jsonify, render_template, request  # noqa: E402
+from flask import (  # noqa: E402
+    Flask,
+    g,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
 
 from cua.browser import BrowserSession  # noqa: E402
 from cua.escalation.console import OperatorConsole  # noqa: E402
@@ -73,6 +82,12 @@ RUNS_DIR = PROJECT_DIR / "runs"
 POLICY_PATH = PROJECT_DIR / "policy_meridian.json"
 
 app = Flask(__name__)
+# Session cookie signing key. A random per-process key is fine for this demo
+# (it only means existing sessions drop on restart, same as the in-memory
+# RUNS/rate-limit state already does) -- production would pull a stable key
+# from a secret manager instead. Set SESSION_SECRET_KEY to pin one.
+app.secret_key = os.environ.get("SESSION_SECRET_KEY") or os.urandom(32)
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax")
 
 APP_LOG = logging.getLogger("meridian_service")
 if not APP_LOG.handlers:
@@ -90,6 +105,36 @@ IDEMPOTENCY: IdempotencyStore["RunState"] = IdempotencyStore(ttl_seconds=3600)
 # model and never accepted from a customer request.
 SYSTEM_BOUND_INPUTS = {"operator_id", "password"}
 _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+
+# --------------------------------------------------------------------- #
+# Customer identity -- session-scoped, bound to the live target's 5 real
+# members. The target has no "create a member" action at all (nothing was
+# ever recorded for it because no such control exists on the site), so
+# customer "signup" can never be real account creation -- it can only bind
+# a browser session to one of these known member numbers. Password is the
+# same fixed demo convention already used for the operator/supervisor
+# logins (see MERIDIAN_OPERATOR_ID etc.) -- this is a demo login, not real
+# authentication, and is labeled as such in the UI.
+#
+# `shares` is a small, fixed set of real share IDs per member used only to
+# populate the home page's account cards. There is no capability that
+# enumerates *all* of a member's shares (each capability call is a full
+# fresh sign-on against the live site, not a cheap query -- reading every
+# one of a member's 12-18 shares on every page load would mean that many
+# full browser sessions per view), so the home page shows a couple of real,
+# live-fetched accounts rather than a complete dynamic listing.
+CUSTOMER_DEMO_PASSWORD = "password"
+KNOWN_CUSTOMERS: dict[str, dict[str, Any]] = {
+    "100987": {"shares": ["100987-MMKT-11", "100987-S0001-9"]},
+    "100234": {"shares": ["100234-S0001-6", "100234-MMKT-16"]},
+    "101555": {"shares": ["101555-CERT-4", "101555-S0001-5"]},
+    "102777": {"shares": ["102777-MMKT-3", "102777-MMKT-4"]},
+    "103001": {"shares": ["103001-MMKT-4", "103001-MMKT-7"]},
+}
+
+
+def current_customer_id() -> str | None:
+    return session.get("customer_member_id")
 
 
 def _json_log(event: str, **fields: Any) -> None:
@@ -296,13 +341,14 @@ def _is_mutating(capability: Capability) -> bool:
     return any(step.risk == RiskLevel.RISKY for step in capability.steps)
 
 
-def _client_inputs(capability: Capability):
-    return [p for p in capability.inputs if p.name not in SYSTEM_BOUND_INPUTS]
+def _client_inputs(capability: Capability, *, exclude: frozenset[str] = frozenset()):
+    hidden = SYSTEM_BOUND_INPUTS | exclude
+    return [p for p in capability.inputs if p.name not in hidden]
 
 
-def _client_signature(capability: Capability) -> str:
+def _client_signature(capability: Capability, *, exclude: frozenset[str] = frozenset()) -> str:
     params = ", ".join(
-        f"{p.name}: {p.kind.value}" for p in _client_inputs(capability)
+        f"{p.name}: {p.kind.value}" for p in _client_inputs(capability, exclude=exclude)
     )
     outputs = ", ".join(
         f"{output.name}: {output.kind.value}" for output in capability.outputs
@@ -553,16 +599,17 @@ def api_run_command(run_id: str):
 # --------------------------------------------------------------------- #
 
 
-def _catalog_tools() -> list[dict]:
+def _catalog_tools(*, hide_member_id: bool = False) -> list[dict]:
+    exclude = frozenset({"member_id"}) if hide_member_id else frozenset()
     tools = []
     for cap in list_capabilities():
-        client_inputs = _client_inputs(cap)
+        client_inputs = _client_inputs(cap, exclude=exclude)
         props = {
             p.name: {"type": "string", "description": p.description}
             for p in client_inputs
         }
         required = [p.name for p in client_inputs if p.required]
-        client_signature = _client_signature(cap)
+        client_signature = _client_signature(cap, exclude=exclude)
         tools.append({
             "name": cap.capability_id,
             "description": (
@@ -584,6 +631,63 @@ def _await_result(run_id: str, timeout_s: float = 90.0) -> dict:
             return run_summary(state)
         time.sleep(0.5)
     return {"status": "timeout"}
+
+
+def _load_customer_home(customer_id: str) -> dict[str, Any]:
+    """Fetch the logged-in member's name and a few real account cards via
+    real deterministic replay (not a shortcut/mock) -- each capability call
+    is launched concurrently (own browser session, own thread) since they
+    are independent, then awaited together, so the page takes roughly as
+    long as the slowest single call rather than the sum of all of them."""
+    jobs: list[tuple[str, Any]] = []
+
+    name_cap = get_capability("meridian_member_inquiry")
+    if name_cap is not None:
+        try:
+            params = _bind_system_credentials(name_cap, {"member_id": customer_id})
+            jobs.append(("name", start_replay(name_cap, params, confirm_risky=False, headed=False)))
+        except (ParamError, RuntimeError):
+            jobs.append(("name", None))
+
+    balance_cap = get_capability("meridian_member_balance")
+    share_ids = KNOWN_CUSTOMERS.get(customer_id, {}).get("shares", [])
+    for share_id in share_ids:
+        if balance_cap is None:
+            jobs.append((share_id, None))
+            continue
+        try:
+            params = _bind_system_credentials(
+                balance_cap, {"member_id": customer_id, "share_id": share_id}
+            )
+            jobs.append((share_id, start_replay(balance_cap, params, confirm_risky=False, headed=False)))
+        except (ParamError, RuntimeError):
+            jobs.append((share_id, None))
+
+    outcomes = {
+        key: (_await_result(state.run_id, timeout_s=60.0) if state else {"status": "error"})
+        for key, state in jobs
+    }
+
+    member_name = None
+    name_result = (outcomes.get("name") or {}).get("result") or {}
+    if name_result.get("status") == "success":
+        member_name = name_result["outputs"].get("member_name")
+
+    accounts = []
+    for share_id in share_ids:
+        result = (outcomes.get(share_id) or {}).get("result") or {}
+        if result.get("status") == "success":
+            outs = result["outputs"]
+            accounts.append({
+                "share_id": share_id,
+                "balance": outs.get("share_balance"),
+                "status": outs.get("share_status"),
+                "ok": True,
+            })
+        else:
+            accounts.append({"share_id": share_id, "balance": None, "status": None, "ok": False})
+
+    return {"member_name": member_name, "accounts": accounts}
 
 
 def _plain_language_reply(capability_id: str, outcome: dict) -> str:
@@ -620,6 +724,15 @@ def _plain_language_reply(capability_id: str, outcome: dict) -> str:
 
 @app.post("/api/chat")
 def api_chat():
+    customer_id = current_customer_id()
+    if customer_id is None:
+        return jsonify(
+            {
+                "reply": "Please log in to chat about your account.",
+                "login_required": True,
+            }
+        ), 401
+
     body = request.get_json(force=True, silent=True) or {}
     message = str(body.get("message", "")).strip()
     if not message:
@@ -627,7 +740,11 @@ def api_chat():
 
     import anthropic
 
-    tools = _catalog_tools()
+    # member_id is never offered to the routing model and never accepted
+    # from the request below -- it is always the logged-in session's own
+    # member number, so a customer's chat can only ever act on their own
+    # account, never another member's, regardless of what they type.
+    tools = _catalog_tools(hide_member_id=True)
     if not tools:
         return jsonify({"reply": "No capabilities are recorded yet."})
 
@@ -703,6 +820,13 @@ def api_chat():
             }
         ), 403
 
+    # Force member_id to the logged-in customer's own, regardless of
+    # whether the model supplied one -- the tool schema never offered it as
+    # an option, and this overwrites/ignores anything supplied anyway.
+    supplied.pop("member_id", None)
+    if any(p.name == "member_id" for p in cap.inputs):
+        supplied["member_id"] = customer_id
+
     try:
         params = _bind_system_credentials(cap, supplied)
     except (ParamError, RuntimeError) as exc:
@@ -749,9 +873,62 @@ def dashboard():
 
 
 @app.get("/customer")
-def customer_assistant():
+def customer_landing():
     return render_template(
-        "customer.html", public_demo_read_only=_public_demo_read_only()
+        "customer_landing.html",
+        public_demo_read_only=_public_demo_read_only(),
+        logged_in=current_customer_id() is not None,
+    )
+
+
+@app.get("/customer/signup")
+def customer_signup():
+    return render_template(
+        "customer_signup.html",
+        known_member_ids=sorted(KNOWN_CUSTOMERS),
+    )
+
+
+@app.get("/customer/login")
+def customer_login():
+    if current_customer_id() is not None:
+        return redirect(url_for("customer_home"))
+    return render_template("customer_login.html", error=None, member_id="")
+
+
+@app.post("/customer/login")
+def customer_login_submit():
+    member_id = str(request.form.get("member_id", "")).strip()
+    password = str(request.form.get("password", ""))
+    if member_id not in KNOWN_CUSTOMERS or password != CUSTOMER_DEMO_PASSWORD:
+        return render_template(
+            "customer_login.html",
+            error="Member ID or password not recognized.",
+            member_id=member_id,
+        ), 401
+    session.clear()
+    session["customer_member_id"] = member_id
+    return redirect(url_for("customer_home"))
+
+
+@app.get("/customer/logout")
+def customer_logout():
+    session.clear()
+    return redirect(url_for("customer_landing"))
+
+
+@app.get("/customer/home")
+def customer_home():
+    customer_id = current_customer_id()
+    if customer_id is None:
+        return redirect(url_for("customer_login"))
+    profile = _load_customer_home(customer_id)
+    return render_template(
+        "customer_home.html",
+        public_demo_read_only=_public_demo_read_only(),
+        member_id=customer_id,
+        member_name=profile["member_name"],
+        accounts=profile["accounts"],
     )
 
 

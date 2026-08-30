@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MERIDIAN — My Account</title>
+<style>
+  :root {
+    color-scheme:light;
+    --navy:#00091d; --navy-2:#0d1b3e; --navy-3:#1c3364;
+    --blue:#093eb0; --gold:#fdcd48; --gold-ink:#3a2a00;
+    --ice:#f2f5fc; --line:#dfe6f5; --ink:#0d1526; --muted:#5c6a85; --white:#fff;
+    --ok-ink:#0f6b3f; --ok-bg:#e5f6ec; --hold-ink:#9a4a06; --hold-bg:#fdecd6;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; color:var(--ink); background:var(--ice); font:15px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  header { height:64px; padding:0 26px; display:flex; align-items:center; justify-content:space-between; background:var(--navy); color:#fff; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:800; letter-spacing:.02em; }
+  .brand .mark { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:linear-gradient(135deg,var(--blue),var(--navy-3)); color:var(--gold); font-weight:800; font-size:13px; }
+  header .right { display:flex; align-items:center; gap:16px; font-size:13px; }
+  header a { color:#cfd9f5; text-decoration:none; font-weight:600; }
+  .pill { background:rgba(253,205,72,.16); color:var(--gold); border:1px solid rgba(253,205,72,.35); border-radius:999px; padding:4px 11px; font-weight:750; font-size:11.5px; letter-spacing:.03em; }
+
+  main { max-width:960px; margin:0 auto; padding:34px 24px 90px; }
+  .welcome h1 { margin:0 0 4px; font-size:27px; color:var(--navy); letter-spacing:-.02em; }
+  .welcome p { margin:0; color:var(--muted); font-size:13.5px; }
+
+  .section-head { display:flex; align-items:baseline; justify-content:space-between; margin:30px 0 14px; }
+  .section-head h2 { margin:0; font-size:15px; color:var(--navy); text-transform:uppercase; letter-spacing:.06em; }
+  .section-head span { color:var(--muted); font-size:12.5px; }
+
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
+  .acct { background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:0 10px 26px rgba(20,35,70,.05); }
+  .acct .id { font-size:12px; color:var(--muted); font-weight:700; letter-spacing:.02em; margin-bottom:8px; }
+  .acct .bal { font-size:26px; font-weight:800; color:var(--navy); letter-spacing:-.02em; }
+  .acct .bal.na { color:var(--muted); font-size:15px; font-weight:600; }
+  .badge { display:inline-block; margin-top:10px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:750; }
+  .badge.open { background:var(--ok-bg); color:var(--ok-ink); }
+  .badge.hold { background:var(--hold-bg); color:var(--hold-ink); }
+
+  .quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
+  .quick button { text-align:left; background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; font:inherit; font-weight:700; color:var(--navy); cursor:pointer; }
+  .quick button span { display:block; font-weight:500; color:var(--muted); font-size:12.5px; margin-top:3px; }
+
+  /* -------- Floating launcher -------- */
+  #launcher { position:fixed; right:22px; bottom:22px; width:60px; height:60px; border-radius:50%; border:0; cursor:pointer; z-index:40;
+    background:linear-gradient(135deg,var(--blue),var(--navy-3)); box-shadow:0 14px 30px rgba(9,25,70,.4); display:grid; place-items:center; }
+  #launcher svg { width:30px; height:30px; }
+  #launcher .dot { position:absolute; top:6px; right:6px; width:11px; height:11px; border-radius:50%; background:var(--gold); border:2px solid var(--navy); }
+
+  /* -------- Chat widget -------- */
+  #widget { position:fixed; right:22px; bottom:22px; width:376px; max-width:calc(100vw - 32px); height:min(600px, calc(100vh - 100px));
+    background:var(--navy); border-radius:20px; box-shadow:0 26px 70px rgba(0,4,20,.5); display:none; flex-direction:column; overflow:hidden; z-index:50; }
+  #widget.open { display:flex; }
+  .w-head { flex:0 0 auto; padding:14px 14px; display:flex; align-items:center; justify-content:space-between; background:var(--navy-2); border-bottom:1px solid rgba(255,255,255,.08); }
+  .w-head button { background:none; border:0; color:#9fb3e8; font-weight:700; font-size:13px; cursor:pointer; padding:6px; }
+  .w-head strong { color:#fff; font-size:14px; letter-spacing:.01em; }
+  #thread { flex:1 1 auto; overflow-y:auto; padding:16px 14px; display:flex; flex-direction:column; gap:10px; }
+  .ts { text-align:center; color:#6d7ba8; font-size:11px; margin:6px 0 2px; }
+  .row { display:flex; gap:8px; align-items:flex-end; }
+  .row.me { justify-content:flex-end; }
+  .avatar { width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,var(--blue),var(--navy-3)); display:grid; place-items:center; flex:none; }
+  .avatar svg { width:14px; height:14px; }
+  .bubble { max-width:78%; border-radius:15px; padding:10px 13px; font-size:13.5px; line-height:1.45; white-space:pre-wrap; }
+  .bubble.bot { background:#16224a; color:#e7ecfb; border-bottom-left-radius:5px; }
+  .bubble.me { background:var(--blue); color:#fff; border-bottom-right-radius:5px; }
+  .bubble.sending { color:#93a2cc; }
+  .pills { display:flex; flex-direction:column; align-items:flex-end; gap:8px; margin:2px 2px 4px; }
+  .pill-btn { border:1px solid #3a4a82; color:#c4d0f5; background:transparent; border-radius:999px; padding:8px 14px; font-size:12.5px; font-weight:700; cursor:pointer; }
+  .pill-btn:hover { border-color:var(--gold); color:var(--gold); }
+  .composer { flex:0 0 auto; padding:12px; display:flex; gap:8px; border-top:1px solid rgba(255,255,255,.08); }
+  .composer input { flex:1; min-width:0; border:0; border-radius:999px; padding:11px 15px; font:inherit; background:#16224a; color:#fff; outline:none; }
+  .composer input::placeholder { color:#7686b3; }
+  .composer button { border:0; width:40px; height:40px; border-radius:50%; background:var(--gold); color:var(--gold-ink); font-weight:800; cursor:pointer; flex:none; }
+  .composer button:disabled { opacity:.5; cursor:wait; }
+
+  @media(max-width:520px){ main{padding:26px 16px 90px} header{padding:0 16px} #widget{right:12px; bottom:12px; width:calc(100vw - 24px)} #launcher{right:18px; bottom:18px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="mark">M</div>MERIDIAN</div>
+  <div class="right">
+    <span class="pill">Member {{ member_id }}</span>
+    <a href="/customer/logout">Log out</a>
+  </div>
+</header>
+
+<main>
+  <div class="welcome">
+    <h1>Welcome back{% if member_name %}, {{ member_name.split(',')[-1].strip() if ',' in member_name else member_name }}{% endif %}</h1>
+    <p>Member {{ member_id }} — everything below is your own account only.</p>
+  </div>
+
+  <div class="section-head"><h2>Your accounts</h2><span>Live balances · ask the assistant about any other account by ID</span></div>
+  <div class="cards">
+    {% for a in accounts %}
+      <div class="acct">
+        <div class="id">{{ a.share_id }}</div>
+        {% if a.ok %}
+          <div class="bal">{{ a.balance }}</div>
+          <span class="badge {{ 'open' if 'OPEN' in (a.status or '') else 'hold' }}">{{ a.status }}</span>
+        {% else %}
+          <div class="bal na">Unable to load right now</div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
+
+  <div class="section-head"><h2>Quick actions</h2><span>Opens the assistant</span></div>
+  <div class="quick">
+    <button type="button" data-msg="Check my balance">Check a balance<span>Ask about any of your accounts</span></button>
+    <button type="button" data-msg="I want to transfer funds between my accounts">Transfer funds<span>Move money between your shares</span></button>
+    <button type="button" data-msg="I want to open a new share">Open a new account<span>Start a new share</span></button>
+    <button type="button" data-msg="I want to update my contact information">Update my info<span>Email, phone, address</span></button>
+  </div>
+</main>
+
+<button id="launcher" aria-label="Open assistant">
+  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="5" y="9" width="14" height="11" rx="4" fill="#fff"/>
+    <circle cx="9.5" cy="14.5" r="1.4" fill="#0d1b3e"/>
+    <circle cx="14.5" cy="14.5" r="1.4" fill="#0d1b3e"/>
+    <rect x="10.5" y="17" width="3" height="1.4" rx=".7" fill="#0d1b3e" opacity=".35"/>
+    <rect x="10.7" y="4" width="2.6" height="5" rx="1.3" fill="#fff"/>
+    <circle cx="12" cy="3.4" r="1.6" fill="#fdcd48"/>
+    <rect x="1.5" y="12" width="2.6" height="5" rx="1.3" fill="#fff" opacity=".9"/>
+    <rect x="19.9" y="12" width="2.6" height="5" rx="1.3" fill="#fff" opacity=".9"/>
+  </svg>
+  <span class="dot"></span>
+</button>
+
+<div id="widget">
+  <div class="w-head">
+    <button id="endChat" type="button">End Chat</button>
+    <strong>MERIDIAN Assist</strong>
+    <button id="minimizeChat" type="button">Minimize</button>
+  </div>
+  <div id="thread" aria-live="polite"></div>
+  <div class="composer">
+    <input id="chatInput" autocomplete="off" maxlength="500" aria-label="Message" placeholder="Type a message…">
+    <button id="sendBtn" aria-label="Send">➤</button>
+  </div>
+</div>
+
+<script>
+const launcher = document.getElementById('launcher');
+const widget = document.getElementById('widget');
+const thread = document.getElementById('thread');
+const input = document.getElementById('chatInput');
+const send = document.getElementById('sendBtn');
+const publicReadOnly = {{ 'true' if public_demo_read_only else 'false' }};
+
+const BOT_AVATAR = '<div class="avatar"><svg viewBox="0 0 24 24" fill="none"><rect x="5" y="9" width="14" height="11" rx="4" fill="#fff"/><circle cx="9.5" cy="14.5" r="1.3" fill="#0d1b3e"/><circle cx="14.5" cy="14.5" r="1.3" fill="#0d1b3e"/></svg></div>';
+
+let opened = false;
+let lastDay = null;
+
+function timeLabel() {
+  return new Date().toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+}
+function maybeDayDivider() {
+  const day = new Date().toDateString();
+  if (day !== lastDay) {
+    lastDay = day;
+    const d = document.createElement('div');
+    d.className = 'ts';
+    d.textContent = 'Today';
+    thread.append(d);
+  }
+}
+function addMessage(text, who) {
+  maybeDayDivider();
+  const row = document.createElement('div');
+  row.className = 'row ' + (who === 'me' ? 'me' : 'bot');
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble ' + (who === 'me' ? 'me' : 'bot');
+  bubble.textContent = text;
+  if (who === 'bot') row.innerHTML = BOT_AVATAR;
+  row.appendChild(bubble);
+  thread.append(row);
+  thread.scrollTop = thread.scrollHeight;
+  return bubble;
+}
+function addPills() {
+  const wrap = document.createElement('div');
+  wrap.className = 'pills';
+  [
+    'Check my balance',
+    'Transfer funds between my accounts',
+    'Open a new share',
+    'Update my contact info',
+    'Talk to a person',
+  ].forEach(text => {
+    const b = document.createElement('button');
+    b.className = 'pill-btn'; b.type = 'button'; b.textContent = text;
+    b.onclick = () => { input.value = text; sendChat(); };
+    wrap.appendChild(b);
+  });
+  thread.append(wrap);
+}
+
+function openWidget() {
+  widget.classList.add('open');
+  launcher.style.display = 'none';
+  if (!opened) {
+    opened = true;
+    addMessage(
+      "Hi — I'm the MERIDIAN assistant. I can help with balances, transfers, new accounts, and updating your info. Sensitive actions pause for your confirmation or staff review." +
+      (publicReadOnly ? " (Public demo: write actions are disabled here.)" : ""),
+      'bot'
+    );
+    addPills();
+  }
+  input.focus();
+}
+function closeWidget() {
+  widget.classList.remove('open');
+  launcher.style.display = 'grid';
+}
+function endChat() {
+  thread.innerHTML = '';
+  opened = false;
+  lastDay = null;
+  closeWidget();
+}
+
+launcher.onclick = openWidget;
+document.getElementById('minimizeChat').onclick = closeWidget;
+document.getElementById('endChat').onclick = endChat;
+document.querySelectorAll('.quick button').forEach(btn => {
+  btn.onclick = () => { openWidget(); input.value = btn.dataset.msg; sendChat(); };
+});
+
+async function sendChat() {
+  const message = input.value.trim();
+  if (!message || send.disabled) return;
+  addMessage(message, 'me');
+  input.value = '';
+  send.disabled = true;
+  const pending = addMessage('Working on it…', 'bot');
+  pending.classList.add('sending');
+  try {
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Idempotency-Key': crypto.randomUUID()},
+      body: JSON.stringify({message}),
+    });
+    const data = await response.json();
+    pending.textContent = data.reply || data.error || 'The request could not be completed.';
+    pending.classList.remove('sending');
+    if (data.login_required) { window.location.href = '/customer/login'; }
+  } catch (_) {
+    pending.textContent = 'The service is temporarily unavailable. Nothing was executed. Please try again.';
+    pending.classList.remove('sending');
+  } finally {
+    send.disabled = false;
+    input.focus();
+  }
+}
+send.onclick = sendChat;
+input.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+</script>
+</body>
+</html>

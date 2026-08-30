@@ -113,6 +113,72 @@ def _strip_run_specific(text: str | None, spec: GoalSpec) -> str | None:
     return text
 
 
+def _reanchor_on_declared_input(
+    target: ElementTarget, element: ElementInfo, spec: GoalSpec
+) -> ElementTarget:
+    """Fix the "adjacent-column-as-label" locator heuristic for real data
+    tables (every column is data; none of them is a durable label).
+
+    ``build_locator_chain`` anchors a data-cell read on whatever text sits in
+    the immediately preceding column — correct for label:value forms, wrong
+    for a multi-column row keyed by a declared input (e.g. a Share ID
+    column), where that preceding column is itself just another *value* that
+    varies row to row. If any *other* cell in this row's captured text
+    matches a declared input's concrete value exactly, that is the row's
+    real stable identity — anchor on it instead, at the actual target
+    column, not the column next to whichever cell happened to be adjacent.
+
+    The positional ``dom_path`` fallback is deliberately dropped once this
+    re-anchor applies. That fallback exists to survive minor markup drift
+    on the *same* row (a drift canary) — it is not a legitimate substitute
+    when the identity itself is genuinely absent (e.g. a share_id that
+    doesn't belong to this member). A purely structural path still matches
+    *some* row at that position regardless of whether the requested row
+    exists, which would silently return a different row's data instead of
+    failing — worse than an error. Keeping only the identity-anchored
+    locator means a nonexistent identity correctly fails resolution and
+    goes through the normal three-bucket triage instead.
+    """
+    if element.role != "cell" or not element.row_texts or not element.col_index:
+        return target
+    for col, text in enumerate(element.row_texts, start=1):
+        if col == element.col_index:
+            continue
+        match = next((p for p in spec.inputs if p.value and p.value == text), None)
+        if match is None:
+            continue
+        target.locators = [
+            Locator(
+                strategy=LocatorStrategy.CSS,
+                value=f'tr:has(td:text-is("{text}")) > td:nth-of-type({element.col_index})',
+                note=(
+                    f"Anchored on the '{match.name}' column (this row's real "
+                    "stable identity) rather than an adjacent value column. "
+                    "No positional fallback: a row keyed by this identity "
+                    "either exists or it doesn't -- there is no legitimate "
+                    "'same row, different structure' case to fall back to, "
+                    "and a purely structural path would silently resolve to "
+                    "a different row instead of failing correctly."
+                ),
+            )
+        ]
+        target.description = f"the value cell in the row where {match.name} is \"{text}\""
+        break
+    return target
+
+
+def _parameterize_target(target: ElementTarget, spec: GoalSpec) -> ElementTarget:
+    """Apply the same '{param}' templating used for values/URLs to locator
+    text — a literal that happens to equal a declared input's concrete
+    value must not survive into the artifact, same as anywhere else."""
+    target.description = parameterize_text(target.description, spec)
+    for locator in target.locators:
+        locator.value = parameterize_text(locator.value, spec)
+        if locator.name:
+            locator.name = parameterize_text(locator.name, spec)
+    return target
+
+
 def build_capability(
     spec: GoalSpec,
     recording: Recording,
@@ -149,6 +215,9 @@ def build_capability(
         target: ElementTarget | None = (
             build_locator_chain(action.element) if action.element else None
         )
+        if target is not None and action.element is not None:
+            target = _reanchor_on_declared_input(target, action.element, spec)
+            target = _parameterize_target(target, spec)
         label = action.element.name if action.element else action.url_after
         step_id = f"s{i:02d}_{action.tool}_{_slug(label)}"
 

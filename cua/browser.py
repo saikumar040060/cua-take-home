@@ -181,8 +181,14 @@ _SNAPSHOT_JS = r"""
     if (!label || label.length > 60) continue;
     i += 1; cells += 1;
     const row = td.parentElement;
-    const colIndex = Array.from(row.children)
-      .filter(c => c.tagName === 'TD').indexOf(td) + 1;
+    const rowCells = Array.from(row.children).filter(c => c.tagName === 'TD');
+    const colIndex = rowCells.indexOf(td) + 1;
+    // Full row, in column order -- lets the recorder recognize when a
+    // *different* cell in this same row (not just the immediately
+    // preceding one) is the row's real stable identity, e.g. a Share ID
+    // column in a multi-column data table where every column is data and
+    // no single column is a durable "label" the way a label:value form is.
+    const rowTexts = rowCells.map(c => (c.innerText || '').trim());
     results.push({
       ref: 'e' + i,
       role: 'cell',
@@ -194,6 +200,7 @@ _SNAPSHOT_JS = r"""
       text: text.slice(0, 120),
       prev_label: label,
       col_index: colIndex,
+      row_texts: rowTexts,
     });
   }
   return {
@@ -219,6 +226,7 @@ class ElementInfo:
     prev_label: str | None = None
     col_index: int | None = None
     name_is_real: bool = True
+    row_texts: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -261,6 +269,7 @@ def take_snapshot(page: Page) -> Snapshot:
             prev_label=e.get("prev_label"),
             col_index=e.get("col_index"),
             name_is_real=e.get("name_is_real", True),
+            row_texts=e.get("row_texts") or [],
         )
         for e in raw["elements"]
     ]
