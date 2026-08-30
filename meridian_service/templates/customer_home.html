@@ -21,6 +21,10 @@
   header a { color:#cfd9f5; text-decoration:none; font-weight:600; }
   .pill { background:rgba(253,205,72,.16); color:var(--gold); border:1px solid rgba(253,205,72,.35); border-radius:999px; padding:4px 11px; font-weight:750; font-size:11.5px; letter-spacing:.03em; }
 
+  .subnav { background:#fff; border-bottom:1px solid var(--line); padding:0 26px; display:flex; gap:6px; }
+  .subnav button { border:0; background:none; padding:14px 6px; margin-right:22px; font:inherit; font-weight:700; font-size:13.5px; color:var(--muted); cursor:pointer; border-bottom:2.5px solid transparent; }
+  .subnav button.active { color:var(--navy); border-bottom-color:var(--blue); }
+
   main { max-width:960px; margin:0 auto; padding:34px 24px 90px; }
   .welcome h1 { margin:0 0 4px; font-size:27px; color:var(--navy); letter-spacing:-.02em; }
   .welcome p { margin:0; color:var(--muted); font-size:13.5px; }
@@ -29,18 +33,32 @@
   .section-head h2 { margin:0; font-size:15px; color:var(--navy); text-transform:uppercase; letter-spacing:.06em; }
   .section-head span { color:var(--muted); font-size:12.5px; }
 
-  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
-  .acct { background:#fff; border:1px solid var(--line); border-radius:16px; padding:18px; box-shadow:0 10px 26px rgba(20,35,70,.05); }
-  .acct .id { font-size:12px; color:var(--muted); font-weight:700; letter-spacing:.02em; margin-bottom:8px; }
-  .acct .bal { font-size:26px; font-weight:800; color:var(--navy); letter-spacing:-.02em; }
-  .acct .bal.na { color:var(--muted); font-size:15px; font-weight:600; }
-  .badge { display:inline-block; margin-top:10px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:750; }
+  /* Bank accounts panel -- one card, each account a row (Chase-style) */
+  .panel { background:#fff; border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 26px rgba(20,35,70,.05); overflow:hidden; }
+  .panel-head { display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid var(--line); }
+  .panel-head strong { font-size:15px; color:var(--navy); }
+  .acct-row { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 20px; border-bottom:1px solid var(--line); }
+  .acct-row:last-child { border-bottom:0; }
+  .acct-row .id { color:var(--blue); font-weight:700; font-size:14px; }
+  .acct-row .type { color:var(--muted); font-size:12px; margin-top:2px; }
+  .acct-row .figures { text-align:right; }
+  .acct-row .bal { font-size:20px; font-weight:800; color:var(--navy); letter-spacing:-.01em; }
+  .acct-row .bal.na { color:var(--muted); font-size:13.5px; font-weight:600; }
+  .badge { display:inline-block; margin-top:4px; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:750; }
   .badge.open { background:var(--ok-bg); color:var(--ok-ink); }
   .badge.hold { background:var(--hold-bg); color:var(--hold-ink); }
+  .acct-actions { display:flex; align-items:center; gap:10px; margin-left:8px; }
+  .btn-sm { border:1px solid var(--blue); background:#fff; color:var(--blue); font-weight:700; font-size:12.5px; padding:7px 13px; border-radius:999px; cursor:pointer; white-space:nowrap; }
+  .btn-sm:hover { background:var(--ice); }
 
-  .quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; }
-  .quick button { text-align:left; background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; font:inherit; font-weight:700; color:var(--navy); cursor:pointer; }
-  .quick button span { display:block; font-weight:500; color:var(--muted); font-size:12.5px; margin-top:3px; }
+  .quick { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:14px; }
+  .quick button { display:flex; align-items:flex-start; gap:12px; text-align:left; background:#fff; border:1px solid var(--line); border-radius:14px; padding:14px 16px; font:inherit; cursor:pointer; }
+  .quick .icon { flex:none; width:38px; height:38px; border-radius:10px; background:var(--ice); color:var(--blue); display:grid; place-items:center; }
+  .quick .icon svg { width:19px; height:19px; }
+  .quick strong { display:block; color:var(--navy); font-size:14px; }
+  .quick span { display:block; font-weight:500; color:var(--muted); font-size:12px; margin-top:2px; }
+
+  @media(max-width:560px){ .acct-row{flex-wrap:wrap} .acct-actions{margin-left:0} }
 
   /* -------- Floating launcher -------- */
   #launcher { position:fixed; right:22px; bottom:22px; width:60px; height:60px; border-radius:50%; border:0; cursor:pointer; z-index:40;
@@ -85,6 +103,11 @@
     <a href="/customer/logout">Log out</a>
   </div>
 </header>
+<nav class="subnav">
+  <button type="button" class="active" data-msg="">Overview</button>
+  <button type="button" data-msg="I want to transfer funds between my accounts">Transfer</button>
+  <button type="button" data-msg="I want to update my contact information">Update info</button>
+</nav>
 
 <main>
   <div class="welcome">
@@ -92,27 +115,47 @@
     <p>Member {{ member_id }} — everything below is your own account only.</p>
   </div>
 
-  <div class="section-head"><h2>Your accounts</h2><span>Live balances · ask the assistant about any other account by ID</span></div>
-  <div class="cards">
+  <div class="section-head"><h2>Bank accounts</h2><span>Live balances · ask the assistant about any other account by ID</span></div>
+  <div class="panel">
     {% for a in accounts %}
-      <div class="acct">
-        <div class="id">{{ a.share_id }}</div>
-        {% if a.ok %}
-          <div class="bal">{{ a.balance }}</div>
-          <span class="badge {{ 'open' if 'OPEN' in (a.status or '') else 'hold' }}">{{ a.status }}</span>
-        {% else %}
-          <div class="bal na">Unable to load right now</div>
-        {% endif %}
+      <div class="acct-row">
+        <div>
+          <div class="id">{{ a.share_id }}</div>
+          <div class="type">Share account</div>
+        </div>
+        <div class="acct-actions">
+          {% if a.ok %}
+            <div class="figures">
+              <div class="bal">{{ a.balance }}</div>
+              <span class="badge {{ 'open' if 'OPEN' in (a.status or '') else 'hold' }}">{{ a.status }}</span>
+            </div>
+            <button class="btn-sm" type="button" data-msg="Transfer funds from {{ a.share_id }}">Transfer</button>
+          {% else %}
+            <div class="figures"><div class="bal na">Unable to load right now</div></div>
+          {% endif %}
+        </div>
       </div>
     {% endfor %}
   </div>
 
   <div class="section-head"><h2>Quick actions</h2><span>Opens the assistant</span></div>
   <div class="quick">
-    <button type="button" data-msg="Check my balance">Check a balance<span>Ask about any of your accounts</span></button>
-    <button type="button" data-msg="I want to transfer funds between my accounts">Transfer funds<span>Move money between your shares</span></button>
-    <button type="button" data-msg="I want to open a new share">Open a new account<span>Start a new share</span></button>
-    <button type="button" data-msg="I want to update my contact information">Update my info<span>Email, phone, address</span></button>
+    <button type="button" data-msg="Check my balance">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg></div>
+      <div><strong>Check a balance</strong><span>Ask about any of your accounts</span></div>
+    </button>
+    <button type="button" data-msg="I want to transfer funds between my accounts">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h13M13 4l4 4-4 4"/><path d="M20 16H7M11 12l-4 4 4 4"/></svg></div>
+      <div><strong>Transfer funds</strong><span>Move money between your shares</span></div>
+    </button>
+    <button type="button" data-msg="I want to open a new share">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M12 10v6M9 13h6"/></svg></div>
+      <div><strong>Open a new account</strong><span>Start a new share</span></div>
+    </button>
+    <button type="button" data-msg="I want to update my contact information">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 20h4l11-11-4-4L4 16v4z"/><path d="M13.5 6.5l4 4"/></svg></div>
+      <div><strong>Update my info</strong><span>Email, phone, address</span></div>
+    </button>
   </div>
 </main>
 
@@ -228,8 +271,13 @@ function endChat() {
 launcher.onclick = openWidget;
 document.getElementById('minimizeChat').onclick = closeWidget;
 document.getElementById('endChat').onclick = endChat;
-document.querySelectorAll('.quick button').forEach(btn => {
-  btn.onclick = () => { openWidget(); input.value = btn.dataset.msg; sendChat(); };
+document.querySelectorAll('[data-msg]').forEach(btn => {
+  btn.onclick = () => {
+    if (!btn.dataset.msg) return; // "Overview" tab -- already here, no-op
+    openWidget();
+    input.value = btn.dataset.msg;
+    sendChat();
+  };
 });
 
 async function sendChat() {
