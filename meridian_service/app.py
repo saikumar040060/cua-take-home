@@ -77,9 +77,37 @@ from meridian_service.platform import (  # noqa: E402
     TTLCache,
 )
 
-ARTIFACTS_DIR = PROJECT_DIR / "artifacts" / "meridian_core"
 RUNS_DIR = PROJECT_DIR / "runs"
-POLICY_PATH = PROJECT_DIR / "policy_meridian.json"
+
+
+@dataclass(frozen=True)
+class BackendSystem:
+    """One target this service can route capabilities against. Each system
+    has its own capability directory, its own policy (own allowed origin),
+    and its own set of credential inputs that are server-bound rather than
+    ever accepted from a client -- mock_app has none at all (it has no
+    sign-on), MERIDIAN CORE requires operator_id/password."""
+
+    key: str
+    artifacts_dir: Path
+    policy_path: Path
+    credential_bound_inputs: frozenset[str]
+
+
+SYSTEMS: dict[str, BackendSystem] = {
+    "meridian_core": BackendSystem(
+        key="meridian_core",
+        artifacts_dir=PROJECT_DIR / "artifacts" / "meridian_core",
+        policy_path=PROJECT_DIR / "policy_meridian.json",
+        credential_bound_inputs=frozenset({"operator_id", "password"}),
+    ),
+    "mock_app": BackendSystem(
+        key="mock_app",
+        artifacts_dir=PROJECT_DIR / "artifacts" / "mock_app",
+        policy_path=PROJECT_DIR / "policy.json",
+        credential_bound_inputs=frozenset(),
+    ),
+}
 
 app = Flask(__name__)
 # Session cookie signing key. A random per-process key is fine for this demo
@@ -97,40 +125,46 @@ if not APP_LOG.handlers:
 APP_LOG.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
 
 RATE_LIMITER = SlidingWindowRateLimiter()
-CAPABILITY_CACHE: TTLCache[list[Capability]] = TTLCache(ttl_seconds=5)
+CAPABILITY_CACHE: TTLCache[dict[str, list[Capability]]] = TTLCache(ttl_seconds=5)
 ROUTER_BREAKER = CircuitBreaker(failure_threshold=3, reset_seconds=30)
 IDEMPOTENCY: IdempotencyStore["RunState"] = IdempotencyStore(ttl_seconds=3600)
 
-# These values are infrastructure-owned. They are never exposed to the routing
-# model and never accepted from a customer request.
-SYSTEM_BOUND_INPUTS = {"operator_id", "password"}
 _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 
 # --------------------------------------------------------------------- #
-# Customer identity -- session-scoped, bound to the live target's 5 real
-# members. The target has no "create a member" action at all (nothing was
-# ever recorded for it because no such control exists on the site), so
-# customer "signup" can never be real account creation -- it can only bind
-# a browser session to one of these known member numbers. Password is the
-# same fixed demo convention already used for the operator/supervisor
-# logins (see MERIDIAN_OPERATOR_ID etc.) -- this is a demo login, not real
-# authentication, and is labeled as such in the UI.
+# Customer identity -- session-scoped, bound to one of the known members
+# across BOTH backend systems. Neither target has a "create a member"
+# action (nothing was ever recorded for either, because no such control
+# exists on either site), so customer "signup" can never be real account
+# creation -- it can only bind a browser session to one of these known
+# member numbers. Password is the same fixed demo convention already used
+# for the operator/supervisor logins (see MERIDIAN_OPERATOR_ID etc. below)
+# -- this is a demo login, not real authentication, and is labeled as such
+# in the UI.
 #
-# `shares` is a small, fixed set of real share IDs per member used only to
-# populate the home page's account cards. There is no capability that
-# enumerates *all* of a member's shares (each capability call is a full
-# fresh sign-on against the live site, not a cheap query -- reading every
-# one of a member's 12-18 shares on every page load would mean that many
-# full browser sessions per view), so the home page shows a couple of real,
-# live-fetched accounts rather than a complete dynamic listing.
+# `accounts` is a small, fixed set of real account/share IDs per member
+# used only to populate the home page's account cards. Neither system has
+# a capability that enumerates *all* of a member's accounts (each
+# capability call is a full fresh sign-on, not a cheap query -- reading
+# every one of a member's many accounts on every page load would mean
+# that many full browser sessions per view), so the home page shows a
+# couple of real, live-fetched accounts rather than a complete dynamic
+# listing.
 CUSTOMER_DEMO_PASSWORD = "password"
 KNOWN_CUSTOMERS: dict[str, dict[str, Any]] = {
-    "100987": {"shares": ["100987-MMKT-11", "100987-S0001-9"]},
-    "100234": {"shares": ["100234-S0001-6", "100234-MMKT-16"]},
-    "101555": {"shares": ["101555-CERT-4", "101555-S0001-5"]},
-    "102777": {"shares": ["102777-MMKT-3", "102777-MMKT-4"]},
-    "103001": {"shares": ["103001-MMKT-4", "103001-MMKT-7"]},
+    "100987": {"system": "meridian_core", "accounts": ["100987-MMKT-11", "100987-S0001-9"]},
+    "100234": {"system": "meridian_core", "accounts": ["100234-S0001-6", "100234-MMKT-16"]},
+    "101555": {"system": "meridian_core", "accounts": ["101555-CERT-4", "101555-S0001-5"]},
+    "102777": {"system": "meridian_core", "accounts": ["102777-MMKT-3", "102777-MMKT-4"]},
+    "103001": {"system": "meridian_core", "accounts": ["103001-MMKT-4", "103001-MMKT-7"]},
+    "20001": {"system": "mock_app", "accounts": ["712280-S00", "712280-S01"]},
+    "20002": {"system": "mock_app", "accounts": ["751856-S00", "751856-S01"]},
+    "20003": {"system": "mock_app", "accounts": ["707592-S00", "707592-S01"]},
 }
+
+
+def customer_system(customer_id: str) -> BackendSystem:
+    return SYSTEMS[KNOWN_CUSTOMERS[customer_id]["system"]]
 
 
 def current_customer_id() -> str | None:
@@ -219,14 +253,15 @@ def healthz():
 def readyz():
     try:
         count = len(list_capabilities())
-        Policy.load(POLICY_PATH)
+        for system in SYSTEMS.values():
+            Policy.load(system.policy_path)
     except Exception as exc:  # noqa: BLE001
         return jsonify({"status": "not_ready", "error": str(exc)}), 503
     return jsonify({"status": "ready", "capabilities": count})
 
 
-def new_gate() -> PolicyGate:
-    return PolicyGate(Policy.load(POLICY_PATH))
+def new_gate(system_key: str) -> PolicyGate:
+    return PolicyGate(Policy.load(SYSTEMS[system_key].policy_path))
 
 
 # --------------------------------------------------------------------- #
@@ -314,10 +349,10 @@ class TrackedConsole(OperatorConsole):
 # --------------------------------------------------------------------- #
 
 
-def _load_capabilities() -> list[Capability]:
+def _load_capabilities_for(system: BackendSystem) -> list[Capability]:
     caps = []
-    if ARTIFACTS_DIR.exists():
-        for p in sorted(ARTIFACTS_DIR.glob("*.json")):
+    if system.artifacts_dir.exists():
+        for p in sorted(system.artifacts_dir.glob("*.json")):
             try:
                 caps.append(Capability.model_validate_json(p.read_text()))
             except Exception:
@@ -325,15 +360,37 @@ def _load_capabilities() -> list[Capability]:
     return caps
 
 
-def list_capabilities() -> list[Capability]:
-    """Return the frequently-read catalog through a short-lived TTL cache."""
-    return CAPABILITY_CACHE.get_or_load(_load_capabilities)
+def _load_all_capabilities() -> dict[str, list[Capability]]:
+    return {key: _load_capabilities_for(system) for key, system in SYSTEMS.items()}
 
 
-def get_capability(capability_id: str) -> Capability | None:
-    for cap in list_capabilities():
+def list_capabilities(system_key: str | None = None) -> list[Capability]:
+    """Return the frequently-read catalog through a short-lived TTL cache.
+
+    With no ``system_key``, returns every capability across every backend
+    system (capability IDs are namespaced per system -- meridian_* /
+    mock_* -- so they never collide); with one, returns just that system's."""
+    all_caps = CAPABILITY_CACHE.get_or_load(_load_all_capabilities)
+    if system_key is None:
+        return [c for caps in all_caps.values() for c in caps]
+    return all_caps.get(system_key, [])
+
+
+def get_capability(capability_id: str, system_key: str | None = None) -> Capability | None:
+    for cap in list_capabilities(system_key):
         if cap.capability_id == capability_id:
             return cap
+    return None
+
+
+def find_capability_system(capability_id: str) -> str | None:
+    """Which backend system a capability_id belongs to, for callers (the
+    employee console, the direct API) that address a capability without
+    already knowing -- unlike customer chat, which always has a logged-in
+    member's own system."""
+    for key in SYSTEMS:
+        if get_capability(capability_id, key) is not None:
+            return key
     return None
 
 
@@ -341,14 +398,18 @@ def _is_mutating(capability: Capability) -> bool:
     return any(step.risk == RiskLevel.RISKY for step in capability.steps)
 
 
-def _client_inputs(capability: Capability, *, exclude: frozenset[str] = frozenset()):
-    hidden = SYSTEM_BOUND_INPUTS | exclude
+def _client_inputs(
+    capability: Capability, *, bound: frozenset[str] = frozenset(), exclude: frozenset[str] = frozenset()
+):
+    hidden = bound | exclude
     return [p for p in capability.inputs if p.name not in hidden]
 
 
-def _client_signature(capability: Capability, *, exclude: frozenset[str] = frozenset()) -> str:
+def _client_signature(
+    capability: Capability, *, bound: frozenset[str] = frozenset(), exclude: frozenset[str] = frozenset()
+) -> str:
     params = ", ".join(
-        f"{p.name}: {p.kind.value}" for p in _client_inputs(capability, exclude=exclude)
+        f"{p.name}: {p.kind.value}" for p in _client_inputs(capability, bound=bound, exclude=exclude)
     )
     outputs = ", ".join(
         f"{output.name}: {output.kind.value}" for output in capability.outputs
@@ -357,9 +418,10 @@ def _client_signature(capability: Capability, *, exclude: frozenset[str] = froze
 
 
 def _bind_system_credentials(
-    capability: Capability, supplied: dict[str, str]
+    system_key: str, capability: Capability, supplied: dict[str, str]
 ) -> dict[str, str]:
-    forbidden = SYSTEM_BOUND_INPUTS.intersection(supplied)
+    bound = SYSTEMS[system_key].credential_bound_inputs
+    forbidden = bound.intersection(supplied)
     if forbidden:
         raise ParamError(
             "infrastructure-owned parameter(s) may not be supplied by a client: "
@@ -367,10 +429,14 @@ def _bind_system_credentials(
         )
 
     params = dict(supplied)
-    needs = {p.name for p in capability.inputs}.intersection(SYSTEM_BOUND_INPUTS)
+    needs = {p.name for p in capability.inputs}.intersection(bound)
     if not needs:
         return params
 
+    # Only meridian_core declares credential-bound inputs today (mock_app's
+    # credential_bound_inputs is empty, so this branch is never reached for
+    # it) -- the supervisor-vs-operator split below is specific to that
+    # system's two privilege levels.
     supervisor = capability.capability_id == "meridian_place_account_hold"
     operator_key = (
         "MERIDIAN_SUPERVISOR_ID" if supervisor else "MERIDIAN_OPERATOR_ID"
@@ -394,11 +460,10 @@ def _bind_system_credentials(
 
 
 def _idempotency_fingerprint(
-    capability: Capability, params: dict[str, str]
+    system_key: str, capability: Capability, params: dict[str, str]
 ) -> str:
-    public = {
-        k: v for k, v in params.items() if k not in SYSTEM_BOUND_INPUTS
-    }
+    bound = SYSTEMS[system_key].credential_bound_inputs
+    public = {k: v for k, v in params.items() if k not in bound}
     return json.dumps(
         {"capability": capability.capability_id, "params": public},
         sort_keys=True,
@@ -412,6 +477,7 @@ def _idempotency_fingerprint(
 
 
 def start_replay(
+    system_key: str,
     capability: Capability,
     params: dict[str, str],
     *,
@@ -419,7 +485,7 @@ def start_replay(
     headed: bool,
     idempotency_key: str | None = None,
 ) -> RunState:
-    fingerprint = _idempotency_fingerprint(capability, params)
+    fingerprint = _idempotency_fingerprint(system_key, capability, params)
     if idempotency_key:
         existing = IDEMPOTENCY.get(idempotency_key, fingerprint)
         if existing is not None:
@@ -438,7 +504,7 @@ def start_replay(
         state.logger = logger
         try:
             with BrowserSession(headed=headed) as session:
-                gate = new_gate()
+                gate = new_gate(system_key)
                 console = TrackedConsole(
                     session.page, gate, logger, run_state=state, redactor=redactor,
                     input_stream=state.console_in, output_stream=state.console_out,
@@ -486,29 +552,33 @@ def run_summary(state: RunState) -> dict:
 
 @app.get("/api/capabilities")
 def api_capabilities():
-    return jsonify([
-        {
-            "capability_id": c.capability_id,
-            "name": c.name,
-            "signature": _client_signature(c),
-            "description": c.description,
-            "inputs": [
-                p.model_dump(mode="json", exclude={"example"})
-                for p in _client_inputs(c)
-            ],
-            "outputs": [o.model_dump(mode="json") for o in c.outputs],
-            "business_outcomes": [b.code for b in c.business_outcomes],
-            "requires_confirmation": _is_mutating(c),
-        }
-        for c in list_capabilities()
-    ])
+    out = []
+    for system_key, caps in _load_all_capabilities().items():
+        bound = SYSTEMS[system_key].credential_bound_inputs
+        for c in caps:
+            out.append({
+                "capability_id": c.capability_id,
+                "system": system_key,
+                "name": c.name,
+                "signature": _client_signature(c, bound=bound),
+                "description": c.description,
+                "inputs": [
+                    p.model_dump(mode="json", exclude={"example"})
+                    for p in _client_inputs(c, bound=bound)
+                ],
+                "outputs": [o.model_dump(mode="json") for o in c.outputs],
+                "business_outcomes": [b.code for b in c.business_outcomes],
+                "requires_confirmation": _is_mutating(c),
+            })
+    return jsonify(out)
 
 
 @app.post("/api/capabilities/<capability_id>/invoke")
 def api_invoke(capability_id: str):
-    cap = get_capability(capability_id)
-    if cap is None:
+    system_key = find_capability_system(capability_id)
+    if system_key is None:
         return jsonify({"error": f"unknown capability '{capability_id}'"}), 404
+    cap = get_capability(capability_id, system_key)
     body = request.get_json(force=True, silent=True) or {}
     if not isinstance(body, dict) or not isinstance(body.get("params", {}), dict):
         return jsonify({"error": "params must be a JSON object"}), 400
@@ -526,7 +596,7 @@ def api_invoke(capability_id: str):
         ), 403
     supplied = {k: str(v) for k, v in body.get("params", {}).items()}
     try:
-        params = _bind_system_credentials(cap, supplied)
+        params = _bind_system_credentials(system_key, cap, supplied)
     except ParamError as exc:
         return jsonify({"error": str(exc)}), 400
     except RuntimeError as exc:
@@ -543,6 +613,7 @@ def api_invoke(capability_id: str):
     confirm_risky = body.get("confirm_risky", False)
     try:
         state = start_replay(
+            system_key,
             cap,
             params,
             confirm_risky=confirm_risky,
@@ -599,22 +670,31 @@ def api_run_command(run_id: str):
 # --------------------------------------------------------------------- #
 
 
-def _catalog_tools(*, hide_member_id: bool = False) -> list[dict]:
+def _catalog_tools(system_key: str, *, hide_member_id: bool = False) -> list[dict]:
     exclude = frozenset({"member_id"}) if hide_member_id else frozenset()
+    bound = SYSTEMS[system_key].credential_bound_inputs
     tools = []
-    for cap in list_capabilities():
-        client_inputs = _client_inputs(cap, exclude=exclude)
+    for cap in list_capabilities(system_key):
+        client_inputs = _client_inputs(cap, bound=bound, exclude=exclude)
         props = {
             p.name: {"type": "string", "description": p.description}
             for p in client_inputs
         }
         required = [p.name for p in client_inputs if p.required]
-        client_signature = _client_signature(cap, exclude=exclude)
+        client_signature = _client_signature(cap, bound=bound, exclude=exclude)
+        member_note = (
+            "\nThe customer's member number is already known from their login "
+            "session -- it is not a parameter of this tool and must never be "
+            "asked for."
+            if hide_member_id and any(p.name == "member_id" for p in cap.inputs)
+            else ""
+        )
         tools.append({
             "name": cap.capability_id,
             "description": (
                 f"{cap.description}\nCustomer-safe signature: {client_signature}\n"
                 f"Possible business outcomes: {', '.join(b.code for b in cap.business_outcomes) or 'none'}."
+                f"{member_note}"
             ),
             "input_schema": {"type": "object", "properties": props, "required": required},
         })
@@ -633,35 +713,61 @@ def _await_result(run_id: str, timeout_s: float = 90.0) -> dict:
     return {"status": "timeout"}
 
 
+# Per-system capability names/param shapes for the home dashboard -- the
+# two systems' equivalent capabilities were recorded independently and
+# don't share names or output field names (meridian_member_balance takes
+# share_id and returns share_balance/share_status; mock_member_balance
+# takes account_no and returns account_balance/account_status).
+_HOME_CAPABILITIES: dict[str, dict[str, str]] = {
+    "meridian_core": {
+        "name_capability_id": "meridian_member_inquiry",
+        "balance_capability_id": "meridian_member_balance",
+        "account_param": "share_id",
+        "balance_output": "share_balance",
+        "status_output": "share_status",
+    },
+    "mock_app": {
+        "name_capability_id": "mock_member_inquiry",
+        "balance_capability_id": "mock_member_balance",
+        "account_param": "account_no",
+        "balance_output": "account_balance",
+        "status_output": "account_status",
+    },
+}
+
+
 def _load_customer_home(customer_id: str) -> dict[str, Any]:
     """Fetch the logged-in member's name and a few real account cards via
     real deterministic replay (not a shortcut/mock) -- each capability call
     is launched concurrently (own browser session, own thread) since they
     are independent, then awaited together, so the page takes roughly as
     long as the slowest single call rather than the sum of all of them."""
+    system_key = KNOWN_CUSTOMERS[customer_id]["system"]
+    cfg = _HOME_CAPABILITIES[system_key]
     jobs: list[tuple[str, Any]] = []
 
-    name_cap = get_capability("meridian_member_inquiry")
+    name_cap = get_capability(cfg["name_capability_id"], system_key)
     if name_cap is not None:
         try:
-            params = _bind_system_credentials(name_cap, {"member_id": customer_id})
-            jobs.append(("name", start_replay(name_cap, params, confirm_risky=False, headed=False)))
+            params = _bind_system_credentials(system_key, name_cap, {"member_id": customer_id})
+            jobs.append(("name", start_replay(system_key, name_cap, params, confirm_risky=False, headed=False)))
         except (ParamError, RuntimeError):
             jobs.append(("name", None))
 
-    balance_cap = get_capability("meridian_member_balance")
-    share_ids = KNOWN_CUSTOMERS.get(customer_id, {}).get("shares", [])
-    for share_id in share_ids:
+    balance_cap = get_capability(cfg["balance_capability_id"], system_key)
+    account_ids = KNOWN_CUSTOMERS.get(customer_id, {}).get("accounts", [])
+    for account_id in account_ids:
         if balance_cap is None:
-            jobs.append((share_id, None))
+            jobs.append((account_id, None))
             continue
         try:
             params = _bind_system_credentials(
-                balance_cap, {"member_id": customer_id, "share_id": share_id}
+                system_key, balance_cap,
+                {"member_id": customer_id, cfg["account_param"]: account_id},
             )
-            jobs.append((share_id, start_replay(balance_cap, params, confirm_risky=False, headed=False)))
+            jobs.append((account_id, start_replay(system_key, balance_cap, params, confirm_risky=False, headed=False)))
         except (ParamError, RuntimeError):
-            jobs.append((share_id, None))
+            jobs.append((account_id, None))
 
     outcomes = {
         key: (_await_result(state.run_id, timeout_s=60.0) if state else {"status": "error"})
@@ -674,18 +780,18 @@ def _load_customer_home(customer_id: str) -> dict[str, Any]:
         member_name = name_result["outputs"].get("member_name")
 
     accounts = []
-    for share_id in share_ids:
-        result = (outcomes.get(share_id) or {}).get("result") or {}
+    for account_id in account_ids:
+        result = (outcomes.get(account_id) or {}).get("result") or {}
         if result.get("status") == "success":
             outs = result["outputs"]
             accounts.append({
-                "share_id": share_id,
-                "balance": outs.get("share_balance"),
-                "status": outs.get("share_status"),
+                "share_id": account_id,
+                "balance": outs.get(cfg["balance_output"]),
+                "status": outs.get(cfg["status_output"]),
                 "ok": True,
             })
         else:
-            accounts.append({"share_id": share_id, "balance": None, "status": None, "ok": False})
+            accounts.append({"share_id": account_id, "balance": None, "status": None, "ok": False})
 
     return {"member_name": member_name, "accounts": accounts}
 
@@ -740,11 +846,15 @@ def api_chat():
 
     import anthropic
 
+    system_key = KNOWN_CUSTOMERS[customer_id]["system"]
+
     # member_id is never offered to the routing model and never accepted
     # from the request below -- it is always the logged-in session's own
     # member number, so a customer's chat can only ever act on their own
-    # account, never another member's, regardless of what they type.
-    tools = _catalog_tools(hide_member_id=True)
+    # account, never another member's, regardless of what they type. The
+    # tool list is also scoped to just this customer's own backend system
+    # -- a mock_app member's chat never even sees MERIDIAN CORE capabilities.
+    tools = _catalog_tools(system_key, hide_member_id=True)
     if not tools:
         return jsonify({"reply": "No capabilities are recorded yet."})
 
@@ -766,10 +876,11 @@ def api_chat():
                 "role": "user",
                 "content": (
                     "You are a routing layer over a fixed set of deterministic "
-                    "capabilities against MERIDIAN CORE. Select one capability "
-                    "only when all of its required customer inputs are present. "
-                    "Never invent values. If information is missing, explain what "
-                    "the customer must provide without making a tool call.\n\n"
+                    "capabilities for the customer's own account. Select one "
+                    "capability only when all of its required customer inputs are "
+                    "present. Never invent values. If information is missing, "
+                    "explain what the customer must provide without making a tool "
+                    "call.\n\n"
                     f"Request: {routed_message}"
                 ),
             }],
@@ -804,7 +915,7 @@ def api_chat():
 
     capability_id = tool_use.name
     supplied = {k: str(v) for k, v in (tool_use.input or {}).items()}
-    cap = get_capability(capability_id)
+    cap = get_capability(capability_id, system_key)
     if cap is None:
         return jsonify({"reply": f"Routed to unknown capability '{capability_id}'."})
 
@@ -828,13 +939,14 @@ def api_chat():
         supplied["member_id"] = customer_id
 
     try:
-        params = _bind_system_credentials(cap, supplied)
+        params = _bind_system_credentials(system_key, cap, supplied)
     except (ParamError, RuntimeError) as exc:
         return jsonify({"reply": str(exc)}), 503
 
     idempotency_key = request.headers.get("Idempotency-Key") or g.request_id
     try:
         state = start_replay(
+            system_key,
             cap,
             params,
             confirm_risky=False,
@@ -847,7 +959,7 @@ def api_chat():
     reply = _plain_language_reply(capability_id, outcome)
     safe_params = {
         p.name: supplied[p.name]
-        for p in _client_inputs(cap)
+        for p in _client_inputs(cap, bound=SYSTEMS[system_key].credential_bound_inputs)
         if p.sensitivity == Sensitivity.PUBLIC and p.name in supplied
     }
     return jsonify({

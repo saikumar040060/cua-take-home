@@ -1,0 +1,39 @@
+{
+  "capability_id": "mock_member_inquiry",
+  "name": "Look up a member's name by member number",
+  "goal": "Look up the member by member number and open their profile. Read back the member's full name as shown in the Name row of the profile table.",
+  "entry_url": "http://127.0.0.1:5000/",
+  "inputs": [
+    {
+      "name": "member_id",
+      "value": "20001",
+      "description": "The member number to search for.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "outputs": [
+    {
+      "name": "member_name",
+      "description": "Full name shown on the member profile.",
+      "sensitivity": "identifier"
+    }
+  ],
+  "business_outcomes": [
+    {
+      "code": "member_not_found",
+      "text": "No matching member record",
+      "description": "The member number does not exist in the core system."
+    }
+  ],
+  "known_interstitials": [
+    {
+      "id": "session_expiry_notice",
+      "text": "Your teller session will expire",
+      "dismiss_role": "button",
+      "dismiss_name": "Continue",
+      "description": "Host-maintenance session notice that occasionally interrupts navigation.",
+      "max_applications": 2
+    }
+  ],
+  "max_steps": 10
+}
