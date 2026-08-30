@@ -15,6 +15,15 @@
   header nav { display:flex; align-items:center; gap:16px; }
   a { color:var(--cyan); text-decoration:none; }
   .env { border:1px solid #725d27; color:var(--amber); background:#2b2415; padding:4px 9px; border-radius:999px; font-size:11px; font-weight:700; }
+  .who { border:1px solid #205768; color:var(--cyan); background:#102b35; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; }
+  .shots { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+  .shots figure { margin:0; width:158px; }
+  .shots img { width:100%; border:1px solid var(--line); border-radius:8px; cursor:zoom-in; display:block; background:#fff; }
+  .shots figcaption { font-size:10.5px; color:var(--muted); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #lightbox { position:fixed; inset:0; background:rgba(3,9,17,.9); display:none; place-items:center; z-index:20; cursor:zoom-out; padding:30px; }
+  #lightbox.open { display:grid; }
+  #lightbox img { max-width:100%; max-height:92vh; border-radius:10px; border:1px solid var(--line); background:#fff; }
+  .shots-note { color:var(--muted); font-size:12px; margin-top:12px; }
   main { max-width:1400px; margin:0 auto; padding:24px 28px 50px; }
   .titlebar { display:flex; justify-content:space-between; gap:20px; align-items:flex-end; margin-bottom:20px; }
   h1 { font-size:25px; margin:0 0 4px; letter-spacing:-.025em; }
@@ -62,8 +71,17 @@
 </head>
 <body>
 <header>
-  <div class="brand"><div class="mark">M</div><span>MERIDIAN CORE <span class="subbrand">Operations Console</span></span></div>
-  <nav><span class="env">{% if public_demo_read_only %}READ-ONLY PUBLIC DEMO{% else %}PRIVATE SUBMISSION DEMO{% endif %}</span><a href="/customer">Customer assistant →</a></nav>
+  <div class="brand"><div class="mark">M</div><span>MERIDIAN <span class="subbrand">Operations Console</span></span></div>
+  <nav>
+    <span class="env">{% if public_demo_read_only %}READ-ONLY PUBLIC DEMO{% else %}PRIVATE SUBMISSION DEMO{% endif %}</span>
+    {% if employee_id %}
+      <span class="who">{{ employee_id }} · {{ employee_role }}</span>
+      <a href="/employee/logout">Log out</a>
+    {% else %}
+      <a href="/employee/login">Employee sign in</a>
+    {% endif %}
+    <a href="/customer">Customer site →</a>
+  </nav>
 </header>
 <main>
   <div class="titlebar">
@@ -96,10 +114,19 @@
       <div class="detail-pane"><strong>Current state</strong><div class="actions" id="actions"></div><pre id="detail"></pre></div>
       <div class="detail-pane"><strong>Correlated event log</strong><pre id="events"></pre></div>
     </div>
+    <div class="detail-pane" id="shotsPane" hidden>
+      <strong>Visual trail</strong>
+      <div class="shots-note" id="shotsNote"></div>
+      <div class="shots" id="shots"></div>
+    </div>
   </section>
 </main>
+<div id="lightbox" role="dialog" aria-label="Enlarged screenshot"><img id="lightboxImg" alt="Enlarged run screenshot"></div>
 <script>
 const el = id => document.getElementById(id);
+const employeeLoggedIn = {{ 'true' if employee_id else 'false' }};
+el('lightbox').onclick = () => el('lightbox').classList.remove('open');
+function openShot(src) { el('lightboxImg').src = src; el('lightbox').classList.add('open'); }
 function badge(status) {
   const node = document.createElement('span');
   node.className = 'badge ' + status;
@@ -151,19 +178,49 @@ async function command(runId, action) {
   setTimeout(() => { loadRuns(); showDetail(runId); }, 500);
 }
 async function showDetail(runId) {
-  const [runResponse, eventResponse] = await Promise.all([
+  const [runResponse, eventResponse, mediaResponse] = await Promise.all([
     fetch('/api/runs/' + encodeURIComponent(runId)),
-    fetch('/api/evidence/' + encodeURIComponent(runId) + '/events')
+    fetch('/api/evidence/' + encodeURIComponent(runId) + '/events'),
+    fetch('/api/evidence/' + encodeURIComponent(runId) + '/media')
   ]);
   const data = await runResponse.json(); const events = await eventResponse.json();
+  const media = await mediaResponse.json();
   el('detailWrap').hidden = false; el('detailId').textContent = runId;
   el('detail').textContent = JSON.stringify(data, null, 2);
   el('events').textContent = events.length ? events.map(e => JSON.stringify(e)).join('\n') : 'No events recorded yet.';
   const actions = el('actions'); actions.replaceChildren();
   if (data.status === 'awaiting_human') {
-    for (const action of ['approve','deny','resume','abort']) {
-      const button = document.createElement('button'); button.textContent = action; button.className = action; button.onclick = () => command(runId, action); actions.append(button);
+    if (employeeLoggedIn) {
+      for (const action of ['approve','deny','resume','abort']) {
+        const button = document.createElement('button'); button.textContent = action; button.className = action; button.onclick = () => command(runId, action); actions.append(button);
+      }
+    } else {
+      const note = document.createElement('a'); note.href = '/employee/login';
+      note.textContent = 'Employee sign in required to approve, deny, resume, or abort →';
+      actions.append(note);
     }
+  }
+  const status = runStatus(data);
+  const shots = media.screenshots || [];
+  const hadHumanMoment = shots.some(n => /intervention|failure|operator/.test(n));
+  const needsVisualTrail = data.status === 'awaiting_human' || data.status === 'error' || status === 'hard_failure' || hadHumanMoment;
+  const pane = el('shotsPane'); const strip = el('shots'); strip.replaceChildren();
+  if (needsVisualTrail && media.screenshots && media.screenshots.length) {
+    pane.hidden = false;
+    el('shotsNote').textContent = 'What the operator screen showed, step by step — the last frames are where it stopped.';
+    for (const name of media.screenshots) {
+      const src = '/api/evidence/' + encodeURIComponent(runId) + '/file/screenshot/' + encodeURIComponent(name);
+      const fig = document.createElement('figure');
+      const img = document.createElement('img'); img.src = src; img.loading = 'lazy';
+      img.alt = 'Screenshot ' + name; img.onclick = () => openShot(src);
+      const cap = document.createElement('figcaption'); cap.textContent = name.replace(/^\d+_/, '').replace(/\.png$/, '');
+      fig.append(img, cap); strip.append(fig);
+    }
+  } else if (needsVisualTrail) {
+    pane.hidden = false;
+    el('shotsNote').textContent = 'No screenshots captured for this run.';
+  } else {
+    pane.hidden = true;
   }
   el('detailWrap').scrollIntoView({behavior:'smooth',block:'start'});
 }

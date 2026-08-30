@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MERIDIAN — Employee Sign In</title>
+<style>
+  :root { color-scheme: dark; --bg:#07111f; --panel:#0d1b2a; --line:#1d344a; --ink:#edf6ff; --muted:#91a5b8; --cyan:#43c6db; --green:#3ddc97; --err:#ff7474; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; background:linear-gradient(145deg,#06101d,#0a1625 55%,#081421); color:var(--ink); font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; }
+  header { padding:18px 26px; }
+  .brand { display:flex; align-items:center; gap:11px; font-weight:750; letter-spacing:.03em; color:var(--ink); text-decoration:none; width:fit-content; }
+  .mark { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; color:#04101a; background:linear-gradient(135deg,var(--cyan),var(--green)); font-weight:900; }
+  main { flex:1; display:grid; place-items:center; padding:20px; }
+  .card { width:100%; max-width:380px; background:rgba(13,27,42,.95); border:1px solid var(--line); border-radius:14px; padding:28px 26px; }
+  h1 { margin:0 0 4px; font-size:20px; letter-spacing:-.02em; }
+  .card > p { margin:0 0 20px; color:var(--muted); font-size:13px; }
+  label { display:block; font-size:12.5px; font-weight:700; margin:13px 0 6px; }
+  input { width:100%; border:1px solid var(--line); background:#0a1929; color:var(--ink); border-radius:9px; padding:10px 12px; font:inherit; outline:none; }
+  input:focus { border-color:var(--cyan); }
+  button { margin-top:18px; width:100%; border:1px solid #287154; background:#123a2d; color:var(--ink); font-weight:750; border-radius:9px; padding:11px; cursor:pointer; font-size:14px; }
+  button:hover { border-color:var(--green); }
+  .error { margin-top:14px; color:var(--err); border:1px solid #713040; background:#361b24; border-radius:9px; padding:9px 11px; font-size:12.5px; }
+  .demo { margin-top:18px; padding-top:15px; border-top:1px solid var(--line); color:var(--muted); font-size:12px; line-height:1.6; }
+  .demo b { color:var(--ink); }
+  .foot { text-align:center; margin-top:15px; font-size:13px; }
+  .foot a { color:var(--cyan); text-decoration:none; }
+</style>
+</head>
+<body>
+<header><a class="brand" href="/"><div class="mark">M</div>MERIDIAN OPERATIONS</a></header>
+<main>
+  <div class="card">
+    <h1>Employee sign in</h1>
+    <p>Act on interventions and inspect run evidence.</p>
+    <form method="post" action="/employee/login">
+      <label for="employee_id">Employee ID</label>
+      <input id="employee_id" name="employee_id" autocomplete="username" value="{{ employee_id }}" placeholder="e.g. teller1" required>
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" placeholder="Password" required>
+      <button type="submit">Sign in</button>
+    </form>
+    {% if error %}<div class="error">{{ error }}</div>{% endif %}
+    <div class="demo"><b>Demo environment</b> — this is a sample login, not real bank authentication. Employees: <b>teller1</b> (teller) and <b>super1</b> (supervisor), password <b>password</b> — the same operator identities the replay engine uses.</div>
+    <div class="foot"><a href="/">← Back to console (read-only)</a></div>
+  </div>
+</main>
+</body>
+</html>

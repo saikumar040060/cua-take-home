@@ -167,6 +167,25 @@ def customer_system(customer_id: str) -> BackendSystem:
     return SYSTEMS[KNOWN_CUSTOMERS[customer_id]["system"]]
 
 
+# --------------------------------------------------------------------- #
+# Employee identity -- session-scoped, same demo convention as customer
+# login (fixed password, known-identity list; a demo of the authorization
+# property, not real authentication). The two identities are the ones the
+# system already has: the operator and supervisor accounts the replay
+# engine itself signs into MERIDIAN CORE with. Anonymous visitors can
+# still *view* the console (catalog, run history, evidence) -- read-only
+# -- but approve/deny/console commands require an employee session.
+EMPLOYEE_DEMO_PASSWORD = "password"
+KNOWN_EMPLOYEES: dict[str, dict[str, str]] = {
+    "teller1": {"role": "TELLER"},
+    "super1": {"role": "SUPERVISOR"},
+}
+
+
+def current_employee_id() -> str | None:
+    return session.get("employee_id")
+
+
 def current_customer_id() -> str | None:
     return session.get("customer_member_id")
 
@@ -514,6 +533,7 @@ def start_replay(
                     confirm_risky=confirm_risky,
                     escalate_on_failure=True,
                     console=console,
+                    step_screenshots=True,
                 )
                 result = engine.run(params)
             # Same redactor the engine registered identifier/secret inputs
@@ -650,6 +670,15 @@ def api_run_command(run_id: str):
                 "message": "Employee commands are disabled on the public demo.",
             }
         ), 403
+    employee_id = current_employee_id()
+    if employee_id is None:
+        return jsonify(
+            {
+                "error": "employee_login_required",
+                "message": "Log in as an employee to act on runs.",
+            }
+        ), 401
+    _json_log("employee_command", employee=employee_id, run_id=run_id)
     state = RUNS.get(run_id)
     if state is None:
         return jsonify({"error": "unknown run"}), 404
@@ -979,9 +1008,46 @@ def api_chat():
 
 @app.get("/")
 def dashboard():
+    employee_id = current_employee_id()
     return render_template(
-        "dashboard.html", public_demo_read_only=_public_demo_read_only()
+        "dashboard.html",
+        public_demo_read_only=_public_demo_read_only(),
+        employee_id=employee_id,
+        employee_role=KNOWN_EMPLOYEES.get(employee_id, {}).get("role") if employee_id else None,
     )
+
+
+@app.get("/employee/login")
+def employee_login():
+    if current_employee_id() is not None:
+        return redirect(url_for("dashboard"))
+    return render_template("employee_login.html", error=None, employee_id="")
+
+
+@app.post("/employee/login")
+def employee_login_submit():
+    employee_id = str(request.form.get("employee_id", "")).strip()
+    password = str(request.form.get("password", ""))
+    if employee_id not in KNOWN_EMPLOYEES or password != EMPLOYEE_DEMO_PASSWORD:
+        return render_template(
+            "employee_login.html",
+            error="Employee ID or password not recognized.",
+            employee_id=employee_id,
+        ), 401
+    # Keep any customer session in the same browser intact -- demoing both
+    # surfaces side by side shouldn't log one out to log the other in.
+    customer = session.get("customer_member_id")
+    session.clear()
+    if customer:
+        session["customer_member_id"] = customer
+    session["employee_id"] = employee_id
+    return redirect(url_for("dashboard"))
+
+
+@app.get("/employee/logout")
+def employee_logout():
+    session.pop("employee_id", None)
+    return redirect(url_for("dashboard"))
 
 
 @app.get("/customer")
@@ -1018,14 +1084,19 @@ def customer_login_submit():
             error="Member ID or password not recognized.",
             member_id=member_id,
         ), 401
+    # Symmetric with employee login: keep any employee session in the same
+    # browser intact rather than logging it out.
+    employee = session.get("employee_id")
     session.clear()
+    if employee:
+        session["employee_id"] = employee
     session["customer_member_id"] = member_id
     return redirect(url_for("customer_home"))
 
 
 @app.get("/customer/logout")
 def customer_logout():
-    session.clear()
+    session.pop("customer_member_id", None)
     return redirect(url_for("customer_landing"))
 
 

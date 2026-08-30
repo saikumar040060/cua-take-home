@@ -181,6 +181,42 @@ def test_api_capabilities_labels_each_system(client):
         assert not names & set(SYSTEMS[c["system"]].credential_bound_inputs)
 
 
+# --------------------------------------------------------------- employee
+
+
+def test_employee_login_rejects_unknown_or_wrong_password(client):
+    assert client.post("/employee/login", data={"employee_id": "nobody", "password": "password"}).status_code == 401
+    assert client.post("/employee/login", data={"employee_id": "teller1", "password": "wrong"}).status_code == 401
+
+
+def test_employee_login_accepts_known_employee(client):
+    response = client.post("/employee/login", data={"employee_id": "teller1", "password": "password"})
+    assert response.status_code == 302
+
+
+def test_run_command_requires_employee_login(client, monkeypatch):
+    monkeypatch.delenv("PUBLIC_DEMO_READ_ONLY", raising=False)
+    response = client.post("/api/runs/some-run/command", json={"command": "approve"})
+    assert response.status_code == 401
+    assert response.get_json()["error"] == "employee_login_required"
+
+
+def test_run_command_allows_logged_in_employee_past_auth(client, monkeypatch):
+    """Auth passes and the request proceeds to run lookup (404 for an
+    unknown run) rather than being rejected at the login gate."""
+    monkeypatch.delenv("PUBLIC_DEMO_READ_ONLY", raising=False)
+    client.post("/employee/login", data={"employee_id": "super1", "password": "password"})
+    response = client.post("/api/runs/some-run/command", json={"command": "approve"})
+    assert response.status_code == 404
+
+
+def test_customer_login_preserves_employee_session(client):
+    client.post("/employee/login", data={"employee_id": "teller1", "password": "password"})
+    client.post("/customer/login", data={"member_id": "20001", "password": "password"})
+    dashboard = client.get("/")
+    assert b"teller1" in dashboard.data
+
+
 def test_mock_mutations_have_only_commit_actions_marked_risky():
     """Same invariant already enforced for meridian_core artifacts: each
     mutating mock_app capability marks exactly one step RISKY and it is

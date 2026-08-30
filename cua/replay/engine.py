@@ -80,6 +80,7 @@ class ReplayEngine:
         confirm_risky: bool = False,
         escalate_on_failure: bool = False,
         console: OperatorConsole | None = None,
+        step_screenshots: bool = False,
     ):
         self.session = session
         self.page = session.page
@@ -88,6 +89,13 @@ class ReplayEngine:
         self.log = run_logger
         self.confirm_risky = confirm_risky
         self.escalate_on_failure = escalate_on_failure
+        # When set, capture a screenshot after every verified step -- a full
+        # visual trail so a reviewer can see what the operator's screen
+        # showed at each action, not just at the failure point. Off by
+        # default: CLI replays keep the lean evidence set (failure and
+        # intervention shots only); the service turns it on so an employee
+        # investigating an escalated run can walk the whole flow visually.
+        self.step_screenshots = step_screenshots
         self.console = console or OperatorConsole(self.page, gate, run_logger)
         self._recovery_counts: dict[str, int] = {}
         self._recoveries: list[RecoveryEvent] = []
@@ -224,6 +232,8 @@ class ReplayEngine:
             return terminal
 
         report.duration_ms = int((time.monotonic() - t0) * 1000)
+        if self.step_screenshots:
+            self.log.save_screenshot(self.page, f"step_{step.id}")
         self.log.event(
             "step_ok", actor="automation", step=step.id,
             action=step.action.value, locator=report.locator_used,
