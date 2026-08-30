@@ -15,15 +15,28 @@ operating legacy UIs that have no API:
    every action, and a **human handoff console** can take over the live
    browser session and hand it back.
 
-The target is a bundled mock "legacy" bank back-office app (server-rendered
-tables, no test IDs, injectable runtime faults). See `REPORT.md` for design
-reasoning and `evidence/` for recorded runs.
+Two targets are driven by the same unmodified core, 17 recorded
+capabilities in total:
+
+- **mock_app** (bundled, self-hosted) — a legacy-style bank back-office
+  app (server-rendered tables, no test IDs, injectable runtime faults),
+  extended to 123 synthetic members and 10 recorded capabilities: member
+  lookup, per-account balance, funds transfer, contact-info update,
+  account close, card lock, loan application, bill pay, transaction
+  history, and a restricted account hold. See `REPORT.md` for design
+  reasoning and `evidence/` for recorded runs.
+- **MERIDIAN CORE** (live, external) — the credit-union servicing console
+  at `web-sample.interface-hiring.com`, 7 recorded capabilities (see the
+  adaptation section below).
 
 The submission build adds two product surfaces around that core:
 
-- `/customer` — customer banking assistant; the LLM routes intent only.
+- `/customer` — customer banking site with login; the LLM routes intent
+  only, and each logged-in member's chat is scoped to their own account
+  on their own backend system.
 - `/` — bank-employee operations console with intervention actions, run
-  history, correlated events, and the approved capability catalog.
+  history, correlated events, and the approved capability catalog across
+  both systems.
 
 See `ARCHITECTURE.md` for the banking-grade target architecture and
 `DEPLOYMENT.md` for the container deployment path.
@@ -125,19 +138,60 @@ pytest -q
 ## Layout
 
 ```
-mock_app/          the legacy-style target app (Flask), fault injection via MOCK_CHAOS
+mock_app/          the legacy-style target app (Flask), 123 members,
+                   fault injection via MOCK_CHAOS
 cua/schema.py      capability artifact schema (the core data model)
 cua/browser.py     session, semantic page snapshot, locator chains + resolution
 cua/discovery/     goal spec, Anthropic decider, agent loop, recorder
 cua/replay/        deterministic engine + result contract
 cua/safety/        policy gate (allowlist, risk classes), redaction
 cua/escalation/    intervention requests + operator console (handoff)
-specs/             goal specifications (the operator-declared contract)
-artifacts/         recorded capabilities
+specs/             goal specifications (mock_app/ and meridian_core/)
+artifacts/         recorded capabilities (mock_app/ and meridian_core/)
 evidence/          committed example runs (discovery + replays)
 tests/             pytest suite (runs hermetically, no API key)
-meridian_service/  capability API + chatbot + dashboard for MERIDIAN CORE
+meridian_service/  customer site + capability API + employee console,
+                   multi-backend (mock_app and MERIDIAN CORE)
 ```
+
+## Engine fixes found through real use
+
+Re-recording and replaying capabilities against both targets surfaced
+four real engine bugs, each verified live and fixed (with the fix
+exercised by replay across multiple inputs):
+
+1. **Wrong-column anchoring in data tables.** The recorder anchored a
+   data-cell read on whatever text sat in the adjacent column — right for
+   label:value forms, wrong for multi-column tables where every column is
+   data. A per-share balance check silently returned a different share's
+   figures. Fixed by re-anchoring the locator on whichever cell in the
+   row matches a declared input's value (the row's real identity), and by
+   making the replay engine substitute `{param}` templates into locator
+   text (it never had).
+2. **Silent wrong-row fallback.** When an identity-anchored locator found
+   zero rows (e.g. a share_id belonging to a different member), the
+   positional `dom_path` fallback still matched *some* row and returned
+   its data as if it were the answer. Fixed by dropping the positional
+   fallback for identity-anchored locators: a nonexistent identity now
+   fails cleanly through the three-bucket triage instead of returning
+   plausible wrong data.
+3. **First column unreadable.** A table's leftmost column has no
+   previous-sibling cell to serve as its label, so it had no readable ref
+   at all and the agent read the wrong cell. Fixed by falling back to the
+   column's `<th>` header text — with header-labeled cells getting a
+   purely positional locator, since a header identifies a column, never a
+   row.
+4. **Ambiguous repeated controls.** A "View"-style link repeated once per
+   row has the same accessible name in every row; its locator silently
+   resolved to a fixed row, opening a *different account's* page than
+   requested. Fixed by extending identity re-anchoring to controls inside
+   table rows, scoping them to the row containing the declared input's
+   value.
+
+Known remaining limitation: `mock_transaction_history`'s
+description/amount reads can misread when a transaction description
+repeats within one account's history — transaction rows genuinely have
+no per-row identity to anchor on.
 
 ## MERIDIAN CORE adaptation
 
@@ -162,27 +216,37 @@ in `artifacts/meridian_core/`: `sign_on`, `member_balance`, `funds_transfer`,
 `place_account_hold` (supervisor override), `member_inquiry`, `open_new_share`,
 and `update_member_info`.
 
-Run the capability API + chatbot + dashboard:
+Run the customer site + capability API + employee console (for mock_app
+members, also start `python -m mock_app.app` in another terminal first):
 
 ```bash
 python -m meridian_service.app
 ```
 
 Then open **http://127.0.0.1:5077/customer** — a public landing page with a
-login. Log in with a real member number (e.g. `100987`) and the demo password
-`password` (same fixed-demo-password convention as the operator/supervisor
-logins below; every one of the 5 real members on the live target uses it).
+login. Log in with a member number and the demo password `password` (the
+same fixed-demo-password convention as the operator/supervisor logins
+below). Two kinds of members work:
+
+- **MERIDIAN CORE members** (live external target): `100234`, `100987`,
+  `101555`, `102777`, `103001`
+- **mock_app members** (your own local target, faster and reset-free):
+  `20001`, `20002`, `20003`
+
 That lands on a per-member home page with live account cards and a floating
 assistant widget. Once logged in, `member_id` is bound to that session
 server-side and stripped from the assistant's tool schema entirely — it is
 never accepted from chat text, so a member's chat can only ever act on their
-own account, no matter what they type. Open
+own account, no matter what they type. The tool catalog itself is also
+scoped per backend: a mock_app member's chat never even sees MERIDIAN CORE
+capabilities, and vice versa. Open
 **http://127.0.0.1:5077/** for the employee operations console. The customer
 request routes to an approved capability and then runs the real deterministic
 replay; interventions, run history, and evidence are visible to the employee.
 `GET /api/capabilities` and
 `POST /api/capabilities/<id>/invoke` are the callable API a calling agent
-would use directly, with no knowledge of the underlying UI. Mutating calls
+would use directly, with no knowledge of the underlying UI (each listed
+capability carries its `system`). Mutating calls
 require an `Idempotency-Key` header and pause at the actual commit action unless
 an authorized caller supplies confirmation.
 
@@ -205,8 +269,9 @@ python -m meridian_service.app
 ```
 
 Open **http://127.0.0.1:5077/customer** for the customer site and
-**http://127.0.0.1:5077/** for the employee console. Confirm the console loads
-all 7 capabilities in the catalog panel.
+**http://127.0.0.1:5077/** for the employee console. Confirm the console
+loads the capability catalog (17 total: 7 MERIDIAN CORE + 10 mock_app;
+this demo path uses the MERIDIAN CORE ones).
 
 **One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows. The 5 real members on the live target are `100234`, `100987`, `101555`, `102777`, `103001`, all with demo password `password`.
 

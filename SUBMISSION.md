@@ -13,23 +13,48 @@ versioned capability. Customer requests use one LLM call only to select a
 published capability and collect typed inputs. The browser execution itself has
 no LLM in the loop.
 
+Two backend systems are driven by the same unmodified core — the live
+MERIDIAN CORE console (7 capabilities) and the bundled self-hosted
+mock_app (123 members, 10 capabilities including loans, bill pay, card
+lock, and transaction history) — 17 recorded capabilities total, all
+listed in one catalog and callable through the same customer chat,
+employee console, and direct API.
+
 ## Five-minute review path
 
-1. Open `/customer` and show the customer assistant.
-2. Open `/` and show seven published capabilities in the employee console.
-3. Explain that customer-visible schemas never include the legacy operator ID
-   or password; credentials are injected by infrastructure after routing.
-4. Run a balance inquiry to show deterministic replay and structured output.
-5. In the private/local demo, request a transfer. Show that replay pauses only
-   on `Post Transfer`, then approve or deny it in the employee console.
-6. Open the run detail to show correlated status and redacted evidence.
-7. Show `ARCHITECTURE.md` and explain that the discovery LLM is an internal
-   Capability Studio component, never part of a live banking transaction.
+1. Open `/customer` and log in as a member (demo password `password`;
+   e.g. `100987` for the live MERIDIAN CORE backend, or `20001` for the
+   bundled mock_app backend — the latter needs `python -m mock_app.app`
+   running and is faster). The home page shows live account cards read by
+   real deterministic replay; the chat opens from the floating launcher.
+2. Show that the assistant is session-scoped: `member_id` never appears
+   in the chat tool schema, is never accepted from chat text, and each
+   member's tool catalog covers only their own backend system. Asking
+   about another member's account fails cleanly instead of answering.
+3. Open `/` and show the published capabilities across both systems in
+   the employee console.
+4. Explain that customer-visible schemas never include the legacy operator
+   ID or password; credentials are injected by infrastructure after routing.
+5. Run a balance inquiry to show deterministic replay and structured output.
+6. In the private/local demo, request a transfer. Show that replay pauses
+   only on the actual commit step, then approve or deny it in the console.
+7. Open the run detail to show correlated status and redacted evidence.
+8. Show the "Engine fixes found through real use" section of `README.md` —
+   four real locator/identity bugs surfaced by re-recording against both
+   targets, each with a verified fix — and `ARCHITECTURE.md` for the
+   production target design.
 
 ## Safety and reliability implemented in the submission
 
 - corrected commit-step risk classification and human approval
 - server-bound legacy credentials, excluded from chat and public APIs
+- customer login with session-bound member identity: the routing model
+  never sees or accepts member_id, and each member's chat is scoped to
+  their own backend system (covered by the `tests/test_customer_auth.py`
+  suite)
+- identity-anchored locator resolution: a nonexistent or foreign
+  account/share ID fails cleanly through the three-bucket triage instead
+  of silently returning another row's data
 - idempotency keys for write operations
 - request IDs, structured logs, security headers, and health/readiness checks
 - endpoint rate limiting and short-lived capability-catalog caching
@@ -46,6 +71,14 @@ and queue storage, encrypted evidence and immutable audit storage, isolated
 browser workers, shared rate limits/idempotency, unknown-effect reconciliation,
 observability/SIEM integration, resilience testing, and security/compliance
 approval. The target design for those pieces is in `ARCHITECTURE.md`.
+
+The customer login itself is a demo convention (a fixed shared password
+against a known-member list), not real authentication — what it
+demonstrates is the *authorization* property built on top of it: once a
+session is bound to a member, no code path lets that session's chat act
+on any other member's account. The employee console currently has no
+login at all; `PUBLIC_DEMO_READ_ONLY=true` is what protects any public
+deployment, and per-employee authentication/RBAC remains future work.
 
 ## Verification
 

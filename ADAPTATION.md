@@ -49,6 +49,22 @@ logs, and container deployment. Risk patterns were narrowed and the recorded
 artifacts corrected so escalation happens only at the actual commit action
 (`Post Transfer`, `Apply Hold`, `Open Share`, or `Save Changes`).
 
+Since the original adaptation, the same core was extended further —
+proving the adaptation boundary in the *other* direction too: the bundled
+mock_app grew to 123 members and 10 recorded capabilities (loans, bill
+pay, card lock, transaction history, account close, and more), and
+`meridian_service` became multi-backend, serving customers of either
+system through one login, one chat, one catalog, and one API. Along the
+way, re-recording `member_balance` with a per-share `share_id` parameter
+surfaced four real locator/identity engine bugs (wrong-column anchoring,
+silent wrong-row fallback, unreadable first columns, ambiguous repeated
+row controls) — each found by an actual wrong answer in a live replay,
+each fixed and re-verified; the details are in `README.md` under "Engine
+fixes found through real use". `member_inquiry` also dropped its
+`member_status` output: the target has no member-level status field, and
+the original recording was silently approximating one from whichever
+share happened to be listed first.
+
 Next, in order: connect both surfaces to the bank identity provider and durable
 authorization policy; move run state, queues, idempotency, evidence, and audit
 records to shared infrastructure; isolate browser workers; add reconciliation
