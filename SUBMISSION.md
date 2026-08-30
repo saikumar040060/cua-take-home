@@ -32,13 +32,22 @@ employee console, and direct API.
    member's tool catalog covers only their own backend system. Asking
    about another member's account fails cleanly instead of answering.
 3. Open `/` and show the published capabilities across both systems in
-   the employee console.
+   the employee console — each shown as a plain-language card (category,
+   read-only/write, approval requirement, risk), technical ID and
+   signature tucked behind a "Technical details" disclosure. Console is
+   viewable read-only by anyone; sign in as an employee (`teller1` or
+   `super1`, password `password`) to unlock approve/deny/resume/abort.
 4. Explain that customer-visible schemas never include the legacy operator
    ID or password; credentials are injected by infrastructure after routing.
 5. Run a balance inquiry to show deterministic replay and structured output.
 6. In the private/local demo, request a transfer. Show that replay pauses
-   only on the actual commit step, then approve or deny it in the console.
-7. Open the run detail to show correlated status and redacted evidence.
+   only on the actual commit step; approving/denying it now requires the
+   employee session from step 3, and the confirmation dialog names the
+   capability and explains the impact before it can be approved.
+7. Open the run detail (a tabbed drawer: Overview, Timeline, Evidence,
+   Technical logs) to show the plain-language summary first, then the
+   per-step screenshot trail for the escalated run, then redacted raw
+   evidence.
 8. Show the "Engine fixes found through real use" section of `README.md` —
    four real locator/identity bugs surfaced by re-recording against both
    targets, each with a verified fix — and `ARCHITECTURE.md` for the
@@ -55,6 +64,12 @@ employee console, and direct API.
 - identity-anchored locator resolution: a nonexistent or foreign
   account/share ID fails cleanly through the three-bucket triage instead
   of silently returning another row's data
+- employee login gating approve/deny/resume/abort and console commands;
+  anonymous visitors get a clean 401, not a silent write, and can still
+  view the catalog and run history read-only
+- a per-step screenshot trail for any run that needed a human decision,
+  so an employee can see exactly what the operator screen showed at each
+  action, not just at the failure point
 - idempotency keys for write operations
 - request IDs, structured logs, security headers, and health/readiness checks
 - endpoint rate limiting and short-lived capability-catalog caching
@@ -72,13 +87,16 @@ browser workers, shared rate limits/idempotency, unknown-effect reconciliation,
 observability/SIEM integration, resilience testing, and security/compliance
 approval. The target design for those pieces is in `ARCHITECTURE.md`.
 
-The customer login itself is a demo convention (a fixed shared password
-against a known-member list), not real authentication — what it
-demonstrates is the *authorization* property built on top of it: once a
-session is bound to a member, no code path lets that session's chat act
-on any other member's account. The employee console currently has no
-login at all; `PUBLIC_DEMO_READ_ONLY=true` is what protects any public
-deployment, and per-employee authentication/RBAC remains future work.
+The customer and employee logins are both a demo convention (a fixed
+shared password against a known-identity list), not real authentication —
+what they demonstrate is the *authorization* property built on top: once
+a session is bound to a member, no code path lets that session's chat act
+on any other member's account; once a session is bound to an employee,
+anonymous visitors can view the console but cannot approve, deny, resume,
+or abort a run. `PUBLIC_DEMO_READ_ONLY=true` remains what protects any
+public deployment regardless of login state. Real bank OIDC/JWT,
+per-employee RBAC (e.g. distinguishing what a teller vs. a supervisor may
+approve), and step-up MFA for sensitive actions remain future work.
 
 ## Verification
 

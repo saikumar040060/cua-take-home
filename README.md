@@ -34,9 +34,9 @@ The submission build adds two product surfaces around that core:
 - `/customer` — customer banking site with login; the LLM routes intent
   only, and each logged-in member's chat is scoped to their own account
   on their own backend system.
-- `/` — bank-employee operations console with intervention actions, run
-  history, correlated events, and the approved capability catalog across
-  both systems.
+- `/` — bank-employee operations console with login, intervention actions,
+  run history, correlated events, a per-step visual trail for escalated
+  runs, and the approved capability catalog across both systems.
 
 See `ARCHITECTURE.md` for the banking-grade target architecture and
 `DEPLOYMENT.md` for the container deployment path.
@@ -240,10 +240,14 @@ never accepted from chat text, so a member's chat can only ever act on their
 own account, no matter what they type. The tool catalog itself is also
 scoped per backend: a mock_app member's chat never even sees MERIDIAN CORE
 capabilities, and vice versa. Open
-**http://127.0.0.1:5077/** for the employee operations console. The customer
-request routes to an approved capability and then runs the real deterministic
-replay; interventions, run history, and evidence are visible to the employee.
-`GET /api/capabilities` and
+**http://127.0.0.1:5077/** for the employee operations console — viewable
+read-only by anyone, but approving, denying, resuming, or aborting a paused
+run requires an employee login (`teller1` or `super1`, demo password
+`password` — the same identities the replay engine itself signs into
+MERIDIAN CORE with). The customer request routes to an approved capability
+and then runs the real deterministic replay; interventions, run history, and
+a per-step visual trail (screenshots of every step, ending at wherever it
+stopped) are visible to the employee. `GET /api/capabilities` and
 `POST /api/capabilities/<id>/invoke` are the callable API a calling agent
 would use directly, with no knowledge of the underlying UI (each listed
 capability carries its `system`). Mutating calls
@@ -273,11 +277,11 @@ Open **http://127.0.0.1:5077/customer** for the customer site and
 loads the capability catalog (17 total: 7 MERIDIAN CORE + 10 mock_app;
 this demo path uses the MERIDIAN CORE ones).
 
-**One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows. The 5 real members on the live target are `100234`, `100987`, `101555`, `102777`, `103001`, all with demo password `password`.
+**One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows. The 5 real members on the live target are `100234`, `100987`, `101555`, `102777`, `103001`, all with demo password `password`. To approve/deny anything from the console, also sign in there as an employee (`teller1`/`password`) — the console is viewable read-only without it.
 
 ### Step 1 — Capability catalog (10 seconds)
 
-Point at the dashboard's catalog panel: all 7 required functions are recorded and callable right now, each with a typed signature. Example:
+Point at the dashboard's catalog panel — capabilities are shown as employee-facing cards (friendly name, category, read-only/write, risk, approval requirement), with the raw capability ID and signature tucked behind a "Technical details" disclosure. All 7 required functions are recorded and callable right now. Example signature:
 
 ```
 meridian_member_balance(member_id, share_id)
@@ -341,11 +345,15 @@ act on it.
 That pause is enforced inside the replay engine itself, not the chatbot or API layer — no code path can skip it.
 
 The capability pauses once, at the actual irreversible **Post Transfer** step.
-The employee can approve or deny it directly from the operations console. The
-same action is also available through the command API:
+The employee can approve or deny it directly from the operations console (sign
+in first at `/employee/login` as `teller1`/`password`). The same action is
+also available through the command API — it requires that same employee
+session (an anonymous request now gets a clean 401, not a silent approval):
 
 ```bash
-curl -s -X POST http://127.0.0.1:5077/api/runs/RUN_ID/command \
+curl -s -c cookies.txt -X POST http://127.0.0.1:5077/employee/login \
+  -d "employee_id=teller1&password=password"
+curl -s -b cookies.txt -X POST http://127.0.0.1:5077/api/runs/RUN_ID/command \
   -H "Content-Type: application/json" -d '{"command":"approve"}'
 ```
 
