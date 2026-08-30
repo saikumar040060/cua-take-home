@@ -6,7 +6,6 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /healthz
     autoDeployTrigger: commit
-    maxShutdownDelaySeconds: 120
     envVars:
       - key: ANTHROPIC_API_KEY
         sync: false
