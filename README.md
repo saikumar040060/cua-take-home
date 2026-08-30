@@ -168,8 +168,15 @@ Run the capability API + chatbot + dashboard:
 python -m meridian_service.app
 ```
 
-Then open **http://127.0.0.1:5077/customer** and type a plain-language request
-(e.g. "check the balance for member 100987"). Open
+Then open **http://127.0.0.1:5077/customer** — a public landing page with a
+login. Log in with a real member number (e.g. `100987`) and the demo password
+`password` (same fixed-demo-password convention as the operator/supervisor
+logins below; every one of the 5 real members on the live target uses it).
+That lands on a per-member home page with live account cards and a floating
+assistant widget. Once logged in, `member_id` is bound to that session
+server-side and stripped from the assistant's tool schema entirely — it is
+never accepted from chat text, so a member's chat can only ever act on their
+own account, no matter what they type. Open
 **http://127.0.0.1:5077/** for the employee operations console. The customer
 request routes to an approved capability and then runs the real deterministic
 replay; interventions, run history, and evidence are visible to the employee.
@@ -197,11 +204,11 @@ source .venv/bin/activate
 python -m meridian_service.app
 ```
 
-Open **http://127.0.0.1:5077/customer** for customer requests and
+Open **http://127.0.0.1:5077/customer** for the customer site and
 **http://127.0.0.1:5077/** for the employee console. Confirm the console loads
 all 7 capabilities in the catalog panel.
 
-**One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows.
+**One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows. The 5 real members on the live target are `100234`, `100987`, `101555`, `102777`, `103001`, all with demo password `password`.
 
 ### Step 1 — Capability catalog (10 seconds)
 
@@ -212,15 +219,28 @@ meridian_member_balance(member_id, share_id)
   -> {share_balance, share_status}
 ```
 
-### Step 2 — Chat: balance check (success path)
+### Step 2 — Customer login and self-service (success path)
 
-In the chat box, type:
+At `/customer`, log in as member `100987`. The home page shows two real,
+live-fetched account cards — reading every one of a member's shares would
+mean a full fresh sign-on per share, so the page shows a couple of real
+accounts rather than an exhaustive dynamic listing. Click the floating
+assistant icon and type:
 
 ```
-check the balance of share 100987-MMKT-7 for member 100987
+check the balance of share 100987-MMKT-7
 ```
 
-One LLM call routes the plain-language request to a capability name and typed arguments — it never touches the browser. Everything after that is deterministic replay of a recorded artifact, no model in the loop. `member_balance` reads the specific share named by `share_id`, not just whichever share happens to be listed first — verified live across members with 12+ shares.
+Note there is no "for member ..." in the message — `member_id` is bound to
+the logged-in session server-side, not accepted from chat text at all. One
+LLM call routes the plain-language request to a capability name and typed
+arguments — it never touches the browser. Everything after that is
+deterministic replay of a recorded artifact, no model in the loop.
+`member_balance` reads the specific share named by `share_id`, not just
+whichever share happens to be listed first — verified live across members
+with 12+ shares, and a nonexistent or another member's share_id now fails
+cleanly instead of silently returning a different share's data (an actual
+bug found and fixed while re-recording this capability).
 
 Expected reply (as of the last test — numbers may differ if the environment reset):
 
@@ -229,12 +249,19 @@ bot: Done. meridian_member_balance succeeded:
 share_balance=$40.00, share_status=OPEN
 ```
 
+**The session-scoping is worth demonstrating directly:** still logged in as
+`100987`, ask the assistant about a share that belongs to a different member,
+e.g. `check the balance of share 100234-S0001-6`. It fails cleanly (that
+share genuinely doesn't exist on member 100987's page) rather than returning
+member 100234's data — the chat literally cannot act on another member's
+account, by construction, not just by prompt instruction.
+
 ### Step 3 — Chat: funds transfer (escalation path)
 
-Type:
+Log in as member `102777` and, in the assistant, type:
 
 ```
-transfer $1 from share 102777-MMKT-3 to share 102777-MMKT-4 for member 102777, memo routine transfer
+transfer $1 from share 102777-MMKT-3 to share 102777-MMKT-4, memo routine transfer
 ```
 
 This is a risky, irreversible action, so it pauses instead of just running. Expected: the run shows status `awaiting_human`:
@@ -270,26 +297,37 @@ two shares currently shown as `OPEN` for the member.
 
 ### Step 4 — The supervisor-override capability
 
-Type:
-
-```
-place a hold on member 103001's share, reason routine review
-```
-
-This exercises the supervisor-override path — gated differently from teller-level actions, and irreversible, so it's a second, distinct risky-action test. Real recorded outcome: share `103001-MMKT-2`, confirmation reference `CN480159`.
+`place_account_hold` is customer-callable in this demo build the same way the
+other six are — log in as member `103001` and, in the assistant, type
+`place a hold on share 103001-MMKT-4, reason routine review` to exercise it
+(the supervisor credential is infrastructure-bound regardless of which
+customer is logged in, same as the operator credential is for the others).
+**Worth calling out as a real product question, not glossed over:** a
+customer requesting a hold on their *own* account is an unusual self-service
+action — placing an account hold (fraud/legal/deceased) is normally a
+bank-initiated, employee-only action. A real deployment would likely restrict
+this capability to the employee console rather than the customer chat; this
+demo exposes all 7 recorded capabilities identically to keep the coverage
+story simple. Real recorded outcome from initial adaptation: share
+`103001-MMKT-2`, confirmation reference `CN480159`.
 
 ### Step 5 — Quick coverage flex (only if time allows)
 
-```
-look up member 100234
-```
+Log in as member `100234` and ask the assistant `what's my name on file`.
 
 Real recorded result: `member_name=Lovelace, Ada`. `member_inquiry` returns only the member's name — this legacy system has no member-level status field, only per-share status (that's what `member_balance` is for); an earlier version of this capability approximated a "member status" from whichever share happened to be listed first, which silently broke once that member's first share stopped being the OPEN one. This is the 7th function, read-only member lookup. Skip this step if short on time — Steps 1–4 already prove the important things.
 
 ### Step 6 — An exceptional state (proves the 3-bucket taxonomy)
 
-```
-check the balance for member 999999
+Customer chat can no longer reference an arbitrary member number (Step 2's
+scoping demo is why), so this one goes through the direct capability API
+instead — representing a calling agent invoking a capability directly, the
+same surface `GET /api/capabilities` documents:
+
+```bash
+curl -s -X POST http://127.0.0.1:5077/api/capabilities/meridian_member_inquiry/invoke \
+  -H "Content-Type: application/json" -H "Idempotency-Key: demo-not-found-1" \
+  -d '{"params":{"member_id":"999999"}}'
 ```
 
-Expected: a clean `member_not_found` business outcome (HTTP 404 under the hood) — reported as a normal, non-alarming result, not an error. Every run in this system sorts into exactly one of three buckets: business outcome, recoverable condition, hard failure — including runs coming through this new API/chatbot layer, verified live.
+Poll `GET /api/runs/RUN_ID` for the result. Expected: a clean `member_not_found` business outcome (HTTP 404 under the hood) — reported as a normal, non-alarming result, not an error. Every run in this system sorts into exactly one of three buckets: business outcome, recoverable condition, hard failure — including runs coming through the customer chat and this API layer, verified live.
