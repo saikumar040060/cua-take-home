@@ -284,6 +284,10 @@ def test_public_demo_blocks_hold_before_requesting_account(client, monkeypatch):
     assert body["capability_id"] == "mock_place_hold"
     assert "Writes are disabled" in body["reply"]
     assert "Which account" not in body["reply"]
+    run = client.get("/api/runs").get_json()[0]
+    assert run["capability_id"] == "mock_place_hold"
+    assert run["status"] == "policy_blocked"
+    assert run["phase"] == "policy"
 
 
 def test_account_only_reply_continues_pending_balance_request(client, monkeypatch):
@@ -314,6 +318,9 @@ def test_account_only_reply_continues_pending_balance_request(client, monkeypatc
     )
     assert clarification.status_code == 200
     assert clarification.get_json()["clarification_required"] is True
+    pending_run = client.get("/api/runs").get_json()[0]
+    assert pending_run["capability_id"] == "mock_member_balance"
+    assert pending_run["status"] == "awaiting_customer"
 
     response = client.post(
         "/api/chat", json={"message": "100987-S0001-9"}
@@ -324,6 +331,8 @@ def test_account_only_reply_continues_pending_balance_request(client, monkeypatc
         "params": {"account_no": "100987-S0001-9", "member_id": "100987"},
     }
     assert "$2,195.44" in response.get_json()["reply"]
+    resumed_run = client.get("/api/runs").get_json()[0]
+    assert resumed_run["run_id"] == pending_run["run_id"]
 
 
 def test_chat_suggests_exact_owned_account_for_typo_without_replay(client, monkeypatch):

@@ -242,6 +242,9 @@
           <option value="success">Success</option>
           <option value="business_outcome">Business outcome</option>
           <option value="awaiting_human">Waiting for employee</option>
+          <option value="awaiting_customer">Waiting for customer</option>
+          <option value="policy_blocked">Policy blocked</option>
+          <option value="clarification_required">Needs clarification</option>
           <option value="hard_failure">Hard failure</option>
           <option value="error">System error</option>
           <option value="running">Running</option>
@@ -461,7 +464,11 @@ function runStatus(run) { return (run.result && run.result.status) || run.status
 function statusMeta(status) {
   return ({
     running: { label: 'Running', cls: 'b-teal' },
+    awaiting_customer: { label: 'Waiting for customer', cls: 'b-gray' },
     awaiting_human: { label: 'Waiting for employee', cls: 'b-amber' },
+    policy_blocked: { label: 'Policy blocked', cls: 'b-amber' },
+    clarification_required: { label: 'Needs clarification', cls: 'b-gray' },
+    cancelled: { label: 'Superseded', cls: 'b-gray' },
     error: { label: 'System error', cls: 'b-red' },
     success: { label: 'Success', cls: 'b-green' },
     business_outcome: { label: 'Business outcome', cls: 'b-teal' },
@@ -536,9 +543,9 @@ function renderInterventionQueue() {
 
 function computeStats() {
   const waiting = runsList.filter(r => r.status === 'awaiting_human').length;
-  $('statRunning').textContent = runsList.filter(r => r.status === 'running').length;
+  $('statRunning').textContent = runsList.filter(r => ['running', 'awaiting_customer'].includes(r.status)).length;
   $('statWaiting').textContent = waiting;
-  $('statCompleted').textContent = runsList.filter(r => ['success', 'business_outcome'].includes(runStatus(r))).length;
+  $('statCompleted').textContent = runsList.filter(r => ['success', 'business_outcome', 'policy_blocked', 'clarification_required', 'cancelled'].includes(runStatus(r))).length;
   $('statFailed').textContent = runsList.filter(r => ['hard_failure', 'error'].includes(runStatus(r))).length;
 }
 
@@ -602,8 +609,12 @@ $('copyRunId').onclick = () => navigator.clipboard.writeText(drawerOpenRunId || 
 
 function plainLanguageSummary(run) {
   const status = run.status, result = run.result || {};
+  if (status === 'awaiting_customer') return 'The approved service was identified and is waiting for the customer to provide a required detail.';
   if (status === 'awaiting_human') return 'This run paused and is waiting for an employee decision before it can continue.';
+  if (status === 'policy_blocked' || result.status === 'policy_blocked') return 'The request was identified and safely blocked by the public-demo policy. Nothing was executed.';
   if (status === 'error') return 'This run could not complete: ' + (run.error || 'an unexpected error occurred') + '.';
+  if (result.status === 'clarification_required') return 'The request was recorded, but the customer needs to state the desired service more clearly.';
+  if (result.status === 'cancelled') return 'The customer started a different request before completing this clarification.';
   if (result.status === 'success') {
     const outs = Object.entries(result.outputs || {}).map(([k, v]) => k.replace(/_/g, ' ') + ': ' + v).join(', ');
     return 'Completed successfully.' + (outs ? ' Result — ' + outs + '.' : '');
@@ -770,7 +781,7 @@ for (const id of ['capSearch', 'capCategoryFilter', 'capRiskFilter', 'capOpFilte
 $('refreshBtn').onclick = () => { loadRuns(); loadCatalog(); };
 
 loadCatalog().then(loadRuns);
-setInterval(() => loadRuns({ silent: true }), 4000);
+setInterval(() => loadRuns({ silent: true }), 1000);
 </script>
 </body>
 </html>

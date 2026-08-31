@@ -364,7 +364,8 @@ class BroadcastOutputStream:
 class RunState:
     run_id: str
     capability_id: str
-    status: str = "running"  # running | awaiting_human | done | error
+    status: str = "running"  # running | awaiting_customer | awaiting_human | done | error | policy_blocked
+    phase: str = "execution"
     console_in: QueueInputStream = field(default_factory=QueueInputStream)
     console_out: BroadcastOutputStream = field(default_factory=BroadcastOutputStream)
     intervention: dict | None = None
@@ -376,6 +377,17 @@ class RunState:
 
 RUNS: dict[str, RunState] = {}
 RUNS_LOCK = threading.Lock()
+
+
+def _register_run(capability_id: str, *, prefix: str = "replay", phase: str = "execution") -> RunState:
+    state = RunState(
+        run_id=new_run_id(prefix),
+        capability_id=capability_id,
+        phase=phase,
+    )
+    with RUNS_LOCK:
+        RUNS[state.run_id] = state
+    return state
 
 
 class TrackedConsole(OperatorConsole):
@@ -542,17 +554,24 @@ def start_replay(
     confirm_risky: bool,
     headed: bool,
     idempotency_key: str | None = None,
+    existing_state: RunState | None = None,
 ) -> RunState:
     fingerprint = _idempotency_fingerprint(system_key, capability, params)
     if idempotency_key:
         existing = IDEMPOTENCY.get(idempotency_key, fingerprint)
         if existing is not None:
+            if existing_state is not None and existing_state is not existing:
+                with RUNS_LOCK:
+                    RUNS.pop(existing_state.run_id, None)
             return existing
 
-    run_id = new_run_id("replay")
-    state = RunState(run_id=run_id, capability_id=capability.capability_id)
-    with RUNS_LOCK:
-        RUNS[run_id] = state
+    state = existing_state or _register_run(capability.capability_id)
+    state.capability_id = capability.capability_id
+    state.status = "running"
+    state.phase = "execution"
+    state.result = None
+    state.error = None
+    run_id = state.run_id
     if idempotency_key:
         IDEMPOTENCY.put(idempotency_key, fingerprint, state)
 
@@ -602,6 +621,8 @@ def run_summary(state: RunState) -> dict:
         "run_id": state.run_id,
         "capability_id": state.capability_id,
         "status": state.status,
+        "phase": state.phase,
+        "started_at": state.started_at,
         "intervention": state.intervention,
         "result": state.result,
         "error": state.error,
@@ -1033,6 +1054,7 @@ _ACCOUNT_INPUT_NAMES = frozenset({
 })
 _ACCOUNT_ID_PATTERN = re.compile(r"\b\d{6}-(?:[a-z0-9]+)-?\d*\b", re.IGNORECASE)
 _PENDING_CHAT_CAPABILITY_KEY = "pending_chat_capability_id"
+_PENDING_CHAT_RUN_KEY = "pending_chat_run_id"
 
 
 def _extract_account_id(message: str) -> str | None:
@@ -1306,13 +1328,33 @@ def api_chat():
     profile = _customer_profile(customer_id)
     system_key = profile["system"]
 
+    # Register the customer request before routing or replay begins so the
+    # employee console observes its full lifecycle, not only browser work.
+    account_reply = _account_clarification_reply(message)
+    pending_run_id = str(session.get(_PENDING_CHAT_RUN_KEY, ""))
+    with RUNS_LOCK:
+        pending_state = RUNS.get(pending_run_id) if pending_run_id else None
+    resumed_state = pending_state if account_reply else None
+    if pending_state is not None and resumed_state is None:
+        pending_state.status = "done"
+        pending_state.phase = "superseded"
+        pending_state.result = {"status": "cancelled"}
+    chat_state = resumed_state or _register_run(
+        "customer_request",
+        prefix="request",
+        phase="routing",
+    )
+    chat_state.status = "running"
+    chat_state.phase = "routing"
+    chat_state.result = None
+    chat_state.error = None
+
     # The router sees only this backend's approved capability artifacts.
     # member_id is absent from its tool schemas and is bound from the session
     # below, so neither LLM output nor customer text can switch identities.
     pending_capability_id = str(
         session.get(_PENDING_CHAT_CAPABILITY_KEY, "")
     )
-    account_reply = _account_clarification_reply(message)
     pending_capability = (
         get_capability(pending_capability_id, system_key)
         if pending_capability_id and account_reply
@@ -1334,25 +1376,51 @@ def api_chat():
     else:
         # A new intent replaces any old unfinished clarification.
         session.pop(_PENDING_CHAT_CAPABILITY_KEY, None)
+        session.pop(_PENDING_CHAT_RUN_KEY, None)
         routed = _route_customer_message(message, customer_id, profile)
     if "reply" in routed:
         routed_pending = routed.get("pending_capability_id")
         if routed_pending:
             session[_PENDING_CHAT_CAPABILITY_KEY] = str(routed_pending)
+            session[_PENDING_CHAT_RUN_KEY] = chat_state.run_id
+            chat_state.capability_id = str(routed_pending)
+        status_code = int(routed.get("status", 200))
+        if routed.get("clarification_required") and routed_pending:
+            chat_state.status = "awaiting_customer"
+            chat_state.phase = "clarification"
+        elif routed.get("clarification_required"):
+            chat_state.status = "done"
+            chat_state.phase = "clarification"
+            chat_state.result = {"status": "clarification_required"}
+        elif status_code >= 400:
+            chat_state.status = "policy_blocked"
+            chat_state.phase = "policy"
+            chat_state.result = {"status": "policy_blocked"}
+        else:
+            chat_state.status = "done"
+            chat_state.phase = "response"
+            chat_state.result = {"status": "success"}
         payload = {"reply": routed["reply"]}
         if routed.get("clarification_required"):
             payload["clarification_required"] = True
-        return jsonify(payload), int(routed.get("status", 200))
+        return jsonify(payload), status_code
 
     capability_id = str(routed["capability_id"])
+    chat_state.capability_id = capability_id
     supplied = {key: str(value) for key, value in routed.get("input", {}).items()}
     cap = get_capability(capability_id, system_key)
     if cap is None:
+        chat_state.status = "error"
+        chat_state.phase = "routing"
+        chat_state.error = f"Routed to unknown capability '{capability_id}'."
         return jsonify({"reply": f"Routed to unknown capability '{capability_id}'."})
 
     account_validation = _validate_customer_account_inputs(cap, supplied, profile)
     if account_validation is not None:
         session[_PENDING_CHAT_CAPABILITY_KEY] = capability_id
+        session[_PENDING_CHAT_RUN_KEY] = chat_state.run_id
+        chat_state.status = "awaiting_customer"
+        chat_state.phase = "clarification"
         return jsonify({
             "reply": account_validation["reply"],
             "clarification_required": True,
@@ -1360,8 +1428,12 @@ def api_chat():
         }), int(account_validation.get("status", 200))
 
     session.pop(_PENDING_CHAT_CAPABILITY_KEY, None)
+    session.pop(_PENDING_CHAT_RUN_KEY, None)
 
     if _public_demo_read_only() and _is_mutating(cap):
+        chat_state.status = "policy_blocked"
+        chat_state.phase = "policy"
+        chat_state.result = {"status": "policy_blocked"}
         return jsonify(
             {
                 "reply": (
@@ -1394,8 +1466,12 @@ def api_chat():
             confirm_risky=False,
             headed=False,
             idempotency_key=idempotency_key,
+            existing_state=chat_state,
         )
     except ValueError as exc:
+        chat_state.status = "error"
+        chat_state.phase = "execution"
+        chat_state.error = str(exc)
         return jsonify({"reply": str(exc)}), 409
     outcome = _await_result(state.run_id)
     reply = _plain_language_reply(capability_id, outcome)
