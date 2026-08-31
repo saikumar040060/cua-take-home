@@ -1595,6 +1595,19 @@ def customer_home():
     if customer_id is None:
         return redirect(url_for("customer_login"))
     profile = _load_customer_home(customer_id)
+    system_key = str(_customer_profile(customer_id)["system"])
+    capabilities = sorted(
+        list_capabilities(system_key),
+        key=lambda capability: (_is_mutating(capability), capability.name.lower()),
+    )
+    capability_options = [
+        {
+            "label": capability.name,
+            "prompt": _customer_capability_prompt(capability.capability_id),
+            "operation": "Employee approval" if _is_mutating(capability) else "Read-only",
+        }
+        for capability in capabilities
+    ]
     return render_template(
         "customer_home.html",
         public_demo_read_only=_public_demo_read_only(),
@@ -1602,7 +1615,33 @@ def customer_home():
         member_id=customer_id,
         member_name=profile["member_name"],
         accounts=profile["accounts"],
+        capability_options=capability_options,
     )
+
+
+def _customer_capability_prompt(capability_id: str) -> str:
+    """Return customer language for an approved artifact without exposing IDs."""
+    prompts = {
+        "member_balance": "Check my balance",
+        "member_inquiry": "What is my account name?",
+        "transaction_history": "Show my recent transactions",
+        "transfer_funds": "Transfer funds between my accounts",
+        "funds_transfer": "Transfer funds between my accounts",
+        "update_contact_info": "Update my contact information",
+        "update_member_info": "Update my contact information",
+        "lock_card": "Lock my card",
+        "close_account": "Close my account",
+        "loan_application": "Apply for a loan",
+        "bill_pay": "Pay a bill",
+        "place_hold": "Place a hold on my account",
+        "place_account_hold": "Place a hold on my account",
+        "open_new_share": "Open a new share account",
+        "sign_on": "Sign on to MERIDIAN CORE",
+    }
+    for suffix, prompt in sorted(prompts.items(), key=lambda item: -len(item[0])):
+        if capability_id.endswith(suffix):
+            return prompt
+    return f"Help me use {capability_id.replace('_', ' ')}"
 
 
 @app.get("/api/evidence/<run_id>/events")

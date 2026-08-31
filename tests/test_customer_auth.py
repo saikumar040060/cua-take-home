@@ -127,6 +127,18 @@ def test_public_demo_home_uses_fast_synthetic_overview(monkeypatch):
     assert all(account["ok"] for account in overview["accounts"])
 
 
+def test_customer_home_embeds_only_session_scoped_capability_options(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    _login(client, "100987")
+    response = client.get("/customer/home")
+    assert response.status_code == 200
+    assert b"Check the balance of a specific member account" in response.data
+    assert b"Place a restricted hold on a member account" in response.data
+    assert b"Check the balance of a specific member share" not in response.data
+    assert b"Show ${Math.min(CAPABILITY_PAGE_SIZE, remaining)} more options" in response.data
+
+
 def test_public_demo_router_handles_safe_catalog_and_balance_requests():
     profile = {
         "member_id": "100987",
