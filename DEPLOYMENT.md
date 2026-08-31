@@ -16,6 +16,11 @@ the container, and uses an auditable deterministic router for the supported
 read-only chat intents. The public deployment therefore needs no LLM key and
 no private bank credentials.
 
+If `ANTHROPIC_API_KEY` is added to the Render service's secret environment,
+the chatbot automatically switches to LLM tool selection over the approved
+artifact catalog. If the provider is unavailable, it falls back to local
+artifact relevance ranking. `/readyz` reports the active `router_mode`.
+
 For a separate private live-bank demo, set `PUBLIC_DEMO_SYNTHETIC=false` and
 configure these values only in the hosting provider's secret manager:
 

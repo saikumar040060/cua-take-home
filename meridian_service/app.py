@@ -13,13 +13,13 @@ Three thin surfaces on top of that unmodified core:
   * Capability API   -- POST /api/capabilities/<id>/invoke runs the real
                          ReplayEngine (no LLM) and returns a structured
                          result. GET /api/capabilities lists the catalog.
-  * Chatbot          -- POST /api/chat takes one plain-language sentence,
-                         makes exactly ONE LLM call to pick which
-                         capability + typed args to invoke (tool-calling
-                         over the same capability catalog), then calls the
-                         capability API above. The LLM never decides what
-                         happens in the browser -- it only routes intent.
-                         Execution underneath is 100% deterministic replay.
+  * Chatbot          -- POST /api/chat takes one plain-language sentence and
+                         ranks the approved capability catalog. It uses one
+                         LLM tool-selection call when configured, with an
+                         artifact-ranked fallback when unavailable. Neither
+                         router decides what happens in the browser -- it
+                         only selects typed intent. Execution underneath is
+                         100% deterministic replay.
   * Dashboard        -- GET / renders the catalog, run history, and the
                          evidence the engine already captures (steps,
                          screenshots, DOM snapshots, logs) -- nothing new
@@ -308,6 +308,11 @@ def readyz():
         "capabilities": count,
         "public_demo_read_only": _public_demo_read_only(),
         "synthetic_backend": _public_demo_synthetic(),
+        "router_mode": (
+            "llm_with_artifact_fallback"
+            if os.environ.get("ANTHROPIC_API_KEY")
+            else "artifact_ranked"
+        ),
         "revision": os.environ.get("RENDER_GIT_COMMIT", "local")[:12],
     })
 
@@ -726,9 +731,9 @@ def api_run_command(run_id: str):
 
 
 # --------------------------------------------------------------------- #
-# Chatbot -- ONE LLM call routes plain language to a capability + typed
-# args (tool-calling over the same catalog above). Execution is always
-# the deterministic replay path above; the model never touches the page.
+# Chatbot -- one optional LLM call or the artifact ranker maps plain language
+# to a capability + typed args. Execution is always deterministic replay; the
+# router never touches the page.
 # --------------------------------------------------------------------- #
 
 
@@ -943,15 +948,89 @@ def _plain_language_reply(capability_id: str, outcome: dict) -> str:
     return f"'{capability_id}' finished with status: {r_status}"
 
 
+_ROUTER_STOP_WORDS = frozenset({
+    "a", "an", "and", "are", "can", "could", "do", "for", "from", "get",
+    "i", "in", "is", "it", "me", "my", "of", "on", "please", "show", "the",
+    "to", "want", "what", "with", "would", "you",
+})
+
+# These are banking-language synonyms, not a replacement catalog. Candidates
+# still come only from the published capability artifacts below, and their
+# artifact text contributes to every score. The phrases provide the lexical
+# bridge that a no-key fallback needs for wording such as "account name" vs.
+# the artifact's formal "member inquiry" name.
+_CAPABILITY_INTENT_PHRASES: dict[str, tuple[str, ...]] = {
+    "member_inquiry": (
+        "name", "account name", "member name", "identity", "profile",
+        "member record", "who am i", "owner",
+    ),
+    "member_balance": (
+        "balance", "available balance", "account status", "how much",
+    ),
+    "transaction_history": (
+        "transaction", "transactions", "history", "recent activity",
+        "latest activity", "purchase", "deposit", "spent",
+    ),
+    "transfer_funds": ("transfer", "send money", "move money"),
+    "update_contact_info": (
+        "update", "contact", "phone", "address", "contact information",
+    ),
+    "lock_card": ("lock card", "unlock card", "card control", "freeze card"),
+    "close_account": ("close account", "close my account"),
+    "loan_application": ("loan", "borrow", "application"),
+    "bill_pay": ("bill", "bill pay", "payee", "pay bill"),
+    "place_hold": ("hold", "account hold", "restrict account"),
+}
+
+
+def _router_tokens(text: str) -> set[str]:
+    return {
+        token for token in re.findall(r"[a-z0-9]+", text.lower())
+        if len(token) > 1 and token not in _ROUTER_STOP_WORDS
+    }
+
+
+def _rank_capability_artifacts(
+    message: str, system_key: str
+) -> list[tuple[Capability, int]]:
+    """Return published capabilities sorted by artifact-grounded relevance."""
+    normalized = " ".join(message.lower().split())
+    message_tokens = _router_tokens(normalized)
+    ranked: list[tuple[Capability, int]] = []
+
+    for capability in list_capabilities(system_key):
+        title_text = f"{capability.capability_id} {capability.name}".lower()
+        detail_text = " ".join([
+            capability.description,
+            *(item.description for item in capability.inputs),
+            *(item.description for item in capability.outputs),
+            *(item.name for item in capability.inputs),
+            *(item.name for item in capability.outputs),
+        ]).lower()
+        title_tokens = _router_tokens(title_text)
+        detail_tokens = _router_tokens(detail_text)
+        score = 3 * len(message_tokens & title_tokens)
+        score += len(message_tokens & detail_tokens)
+
+        for suffix, phrases in _CAPABILITY_INTENT_PHRASES.items():
+            if capability.capability_id.endswith(suffix):
+                for phrase in phrases:
+                    if phrase in normalized:
+                        score += 8 + len(_router_tokens(phrase))
+
+        ranked.append((capability, score))
+
+    return sorted(ranked, key=lambda item: (-item[1], item[0].capability_id))
+
+
+def _clarification(reply: str) -> dict[str, Any]:
+    return {"reply": reply, "status": 200, "clarification_required": True}
+
+
 def _public_demo_route(
     message: str, customer_id: str, profile: dict[str, Any]
 ) -> dict[str, Any]:
-    """Small, auditable router for the public demo's read-only surface.
-
-    It deliberately recognizes only the handful of safe demo intents. The
-    private product path still uses the LLM tool router over the full approved
-    catalog; browser execution remains deterministic in both modes.
-    """
+    """Artifact-ranked fallback when the hosted demo has no LLM key."""
     normalized = " ".join(message.lower().split())
     accounts = [str(value) for value in profile.get("accounts", [])]
 
@@ -993,47 +1072,6 @@ def _public_demo_route(
             "status": 200,
         }
 
-    requested_account = next(
-        (account for account in accounts if account.lower() in normalized),
-        None,
-    )
-    typed_account = re.search(r"\b\d{6}-(?:[a-z0-9]+)-?\d*\b", normalized)
-    if typed_account is not None:
-        requested_account = typed_account.group(0).upper()
-    selected_account = requested_account or (accounts[0] if accounts else None)
-
-    if any(phrase in normalized for phrase in ("transaction", "recent activity", "history")):
-        if selected_account is None:
-            return {"reply": "Please provide an account ID.", "status": 400}
-        return {
-            "capability_id": "mock_transaction_history",
-            "input": {"account_no": selected_account},
-        }
-
-    if "balance" in normalized or "account status" in normalized:
-        if selected_account is None:
-            return {"reply": "Please provide an account ID.", "status": 400}
-        return {
-            "capability_id": "mock_member_balance",
-            "input": {"account_no": selected_account},
-        }
-
-    if any(phrase in normalized for phrase in ("my name", "name on", "who am i", "look up member", "member information")):
-        return {"capability_id": "mock_member_inquiry", "input": {}}
-
-    write_intents = (
-        (("transfer", "send money", "move money"), "mock_transfer_funds"),
-        (("update", "change address", "change phone", "contact info"), "mock_update_contact_info"),
-        (("lock card", "unlock card", "card control"), "mock_lock_card"),
-        (("close account",), "mock_close_account"),
-        (("loan",), "mock_loan_application"),
-        (("bill pay", "pay bill"), "mock_bill_pay"),
-        (("place hold", "account hold"), "mock_place_hold"),
-    )
-    for phrases, capability_id in write_intents:
-        if any(phrase in normalized for phrase in phrases):
-            return {"capability_id": capability_id, "input": {}}
-
     if "open" in normalized and ("share" in normalized or "account" in normalized):
         return {
             "reply": (
@@ -1043,12 +1081,127 @@ def _public_demo_route(
             "status": 403,
         }
 
+    ranked = _rank_capability_artifacts(message, str(profile["system"]))
+    if not ranked or ranked[0][1] < 8:
+        return _clarification(
+            "I’m not certain which approved banking service you mean. Please "
+            "say what you want to check—for example: ‘What is my account name?’, "
+            "‘Check the balance for account 100987-MMKT-11’, or ‘Show recent "
+            "transactions for account 100987-MMKT-11’. Nothing was executed."
+        )
+
+    selected_capability, top_score = ranked[0]
+    second_score = ranked[1][1] if len(ranked) > 1 else 0
+    if second_score > 0 and top_score - second_score < 3:
+        choices = " or ".join(capability.name for capability, _ in ranked[:2])
+        return _clarification(
+            f"I found more than one possible approved service: {choices}. "
+            "Please tell me which one you want. Nothing was executed."
+        )
+
+    supplied: dict[str, str] = {}
+    requested_account = next(
+        (account for account in accounts if account.lower() in normalized),
+        None,
+    )
+    typed_account = re.search(r"\b\d{6}-(?:[a-z0-9]+)-?\d*\b", normalized)
+    if typed_account is not None:
+        requested_account = typed_account.group(0).upper()
+
+    client_inputs = {
+        item.name for item in _client_inputs(
+            selected_capability,
+            bound=SYSTEMS[str(profile["system"])].credential_bound_inputs,
+            exclude=frozenset({"member_id"}),
+        )
+    }
+    if "account_no" in client_inputs:
+        if requested_account is None:
+            account_choices = ", ".join(accounts) or "the account ID"
+            return _clarification(
+                f"Which account should I use? Please include one of these account "
+                f"IDs in your request: {account_choices}. Nothing was executed."
+            )
+        supplied["account_no"] = requested_account
+
+    # Public write requests are classified here, then stopped by the common
+    # read-only policy guard before missing write parameters are validated.
+    return {
+        "capability_id": selected_capability.capability_id,
+        "input": supplied,
+        "ranked_score": top_score,
+    }
+
+
+def _llm_chat_route(message: str, system_key: str) -> dict[str, Any]:
+    """Use one LLM tool-selection call over the approved artifact catalog."""
+    import anthropic
+
+    tools = _catalog_tools(system_key, hide_member_id=True)
+    if not tools:
+        return {"reply": "No capabilities are recorded yet.", "status": 200}
+
+    routed_message = re.sub(
+        r"(?i)(password\s*(?:is|=|:)?\s*)\S+",
+        r"\1[REDACTED]",
+        message,
+    )
+
+    def call_router():
+        client = anthropic.Anthropic()
+        return client.messages.create(
+            model=os.environ.get("CUA_MODEL", "claude-sonnet-4-5"),
+            max_tokens=1024,
+            tools=tools,
+            messages=[{
+                "role": "user",
+                "content": (
+                    "Rank the approved capability tools by semantic relevance to "
+                    "the customer's request. Call exactly one tool only when there "
+                    "is a clear best match and every required customer input is "
+                    "present. Never invent values and never ask for member_id; it "
+                    "is bound by the authenticated session. If the request is "
+                    "ambiguous or information is missing, do not call a tool. Ask "
+                    "one concise, specific clarification question instead.\n\n"
+                    f"Request: {routed_message}"
+                ),
+            }],
+        )
+
+    response = ROUTER_BREAKER.call(call_router)
+    tool_use = next((block for block in response.content if block.type == "tool_use"), None)
+    if tool_use is None:
+        text = "".join(block.text for block in response.content if block.type == "text")
+        return _clarification(
+            text or "Please clarify which approved banking service you want."
+        )
+    return {
+        "capability_id": tool_use.name,
+        "input": {key: str(value) for key, value in (tool_use.input or {}).items()},
+    }
+
+
+def _route_customer_message(
+    message: str, customer_id: str, profile: dict[str, Any]
+) -> dict[str, Any]:
+    """Prefer LLM routing; fail over to artifact ranking for the public demo."""
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        try:
+            return _llm_chat_route(message, str(profile["system"]))
+        except CircuitOpen:
+            _json_log("router_fallback", reason="circuit_open")
+        except Exception as exc:  # noqa: BLE001
+            _json_log("router_fallback", reason=exc.__class__.__name__)
+
+    if _public_demo_synthetic():
+        return _public_demo_route(message, customer_id, profile)
+
     return {
         "reply": (
-            "I can safely help with balances, recent transactions, the name on "
-            "your member record, or the approved capability list. Nothing was executed."
+            "The capability router is unavailable. Nothing was executed; please "
+            "try again or contact a bank employee."
         ),
-        "status": 200,
+        "status": 503,
     }
 
 
@@ -1071,82 +1224,18 @@ def api_chat():
     profile = _customer_profile(customer_id)
     system_key = profile["system"]
 
-    # member_id is never offered to the routing model and never accepted
-    # from the request below -- it is always the logged-in session's own
-    # member number, so a customer's chat can only ever act on their own
-    # account, never another member's, regardless of what they type. The
-    # tool list is also scoped to just this customer's own backend system
-    # -- a mock_app member's chat never even sees MERIDIAN CORE capabilities.
-    if _public_demo_synthetic():
-        routed = _public_demo_route(message, customer_id, profile)
-        if "reply" in routed:
-            return jsonify({"reply": routed["reply"]}), int(routed.get("status", 200))
-        capability_id = str(routed["capability_id"])
-        supplied = {k: str(v) for k, v in routed.get("input", {}).items()}
-    else:
-        import anthropic
+    # The router sees only this backend's approved capability artifacts.
+    # member_id is absent from its tool schemas and is bound from the session
+    # below, so neither LLM output nor customer text can switch identities.
+    routed = _route_customer_message(message, customer_id, profile)
+    if "reply" in routed:
+        payload = {"reply": routed["reply"]}
+        if routed.get("clarification_required"):
+            payload["clarification_required"] = True
+        return jsonify(payload), int(routed.get("status", 200))
 
-        tools = _catalog_tools(system_key, hide_member_id=True)
-        if not tools:
-            return jsonify({"reply": "No capabilities are recorded yet."})
-
-        # Defense in depth: legacy credentials are server-bound and excluded
-        # from tool schemas; scrub password-shaped text typed by a customer.
-        routed_message = re.sub(
-            r"(?i)(password\s*(?:is|=|:)?\s*)\S+",
-            r"\1[REDACTED]",
-            message,
-        )
-
-        def _route():
-            client = anthropic.Anthropic()
-            return client.messages.create(
-                model=os.environ.get("CUA_MODEL", "claude-sonnet-4-5"),
-                max_tokens=1024,
-                tools=tools,
-                messages=[{
-                    "role": "user",
-                    "content": (
-                        "You are a routing layer over a fixed set of deterministic "
-                        "capabilities for the customer's own account. Select one "
-                        "capability only when all of its required customer inputs "
-                        "are present. Never invent values. If information is "
-                        "missing, explain what the customer must provide without "
-                        "making a tool call.\n\n"
-                        f"Request: {routed_message}"
-                    ),
-                }],
-            )
-
-        try:
-            resp = ROUTER_BREAKER.call(_route)
-        except CircuitOpen:
-            return jsonify(
-                {
-                    "reply": (
-                        "The assistant is temporarily unavailable. Your request was "
-                        "not executed; please try again or contact a bank employee."
-                    )
-                }
-            ), 503
-        except Exception as exc:  # noqa: BLE001
-            _json_log("router_error", error_type=exc.__class__.__name__)
-            return jsonify(
-                {
-                    "reply": (
-                        "I could not safely understand that request. Nothing was "
-                        "executed; please try again or contact a bank employee."
-                    )
-                }
-            ), 503
-
-        tool_use = next((b for b in resp.content if b.type == "tool_use"), None)
-        if tool_use is None:
-            text = "".join(b.text for b in resp.content if b.type == "text")
-            return jsonify({"reply": text or "I couldn't map that to a known capability."})
-
-        capability_id = tool_use.name
-        supplied = {k: str(v) for k, v in (tool_use.input or {}).items()}
+    capability_id = str(routed["capability_id"])
+    supplied = {key: str(value) for key, value in routed.get("input", {}).items()}
     cap = get_capability(capability_id, system_key)
     if cap is None:
         return jsonify({"reply": f"Routed to unknown capability '{capability_id}'."})

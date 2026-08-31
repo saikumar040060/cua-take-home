@@ -33,6 +33,8 @@ from meridian_service.app import (
     _customer_profile,
     _load_customer_home,
     _public_demo_route,
+    _rank_capability_artifacts,
+    _route_customer_message,
     app,
     customer_system,
     find_capability_system,
@@ -126,20 +128,103 @@ def test_public_demo_home_uses_fast_synthetic_overview(monkeypatch):
 
 
 def test_public_demo_router_handles_safe_catalog_and_balance_requests():
-    profile = {"member_id": "100987", "accounts": ["100987-MMKT-11"]}
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11"],
+    }
     catalog = _public_demo_route("Show available banking capabilities", "100987", profile)
     assert catalog["status"] == 200
     assert "read-only" in catalog["reply"]
 
-    balance = _public_demo_route("Check my balance", "100987", profile)
-    assert balance == {
-        "capability_id": "mock_member_balance",
-        "input": {"account_no": "100987-MMKT-11"},
+    balance = _public_demo_route(
+        "Check the balance for account 100987-MMKT-11", "100987", profile
+    )
+    assert balance["capability_id"] == "mock_member_balance"
+    assert balance["input"] == {"account_no": "100987-MMKT-11"}
+
+
+def test_artifact_ranker_understands_natural_account_name_request():
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11", "100987-S0001-9"],
     }
+    routed = _public_demo_route("What is my account name?", "100987", profile)
+    assert routed["capability_id"] == "mock_member_inquiry"
+    assert routed["input"] == {}
+
+    ranked = _rank_capability_artifacts("What is my account name?", "mock_app")
+    assert ranked[0][0].capability_id == "mock_member_inquiry"
+    assert ranked[0][1] > ranked[1][1]
+
+
+def test_artifact_ranker_asks_specific_question_when_information_is_missing():
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11", "100987-S0001-9"],
+    }
+    routed = _public_demo_route("Check my balance", "100987", profile)
+    assert routed["clarification_required"] is True
+    assert "Which account" in routed["reply"]
+    assert "100987-MMKT-11" in routed["reply"]
+
+
+def test_artifact_ranker_does_not_guess_an_unclear_request():
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11", "100987-S0001-9"],
+    }
+    routed = _public_demo_route("Can you handle this for me?", "100987", profile)
+    assert routed["clarification_required"] is True
+    assert "not certain" in routed["reply"]
+
+
+def test_router_prefers_llm_when_key_is_configured(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key-not-sent")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11"],
+    }
+    monkeypatch.setattr(
+        service_app,
+        "_llm_chat_route",
+        lambda message, system_key: {
+            "capability_id": "mock_member_inquiry",
+            "input": {},
+        },
+    )
+    routed = _route_customer_message("What is my account name?", "100987", profile)
+    assert routed["capability_id"] == "mock_member_inquiry"
+
+
+def test_router_falls_back_to_artifact_ranking_when_llm_fails(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "invalid-test-key")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11"],
+    }
+
+    def fail_router(message, system_key):
+        raise RuntimeError("provider unavailable")
+
+    monkeypatch.setattr(service_app, "_llm_chat_route", fail_router)
+    routed = _route_customer_message("What is my account name?", "100987", profile)
+    assert routed["capability_id"] == "mock_member_inquiry"
 
 
 def test_public_demo_router_rejects_another_member():
-    profile = {"member_id": "100987", "accounts": ["100987-MMKT-11"]}
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11"],
+    }
     routed = _public_demo_route("Look up member 100234", "100987", profile)
     assert routed["status"] == 403
     assert "current session" in routed["reply"]
@@ -167,7 +252,10 @@ def test_public_demo_chat_uses_session_bound_synthetic_member(client, monkeypatc
         },
     )
     _login(client, "100987")
-    response = client.post("/api/chat", json={"message": "Check my balance"})
+    response = client.post(
+        "/api/chat",
+        json={"message": "Check the balance for account 100987-MMKT-11"},
+    )
     assert response.status_code == 200
     assert captured == {
         "system": "mock_app",

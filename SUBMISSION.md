@@ -9,9 +9,10 @@ redacted execution history.
 
 The core innovation is **discover once, replay deterministically**. A supervised
 LLM discovery agent learns a legacy browser workflow and records a typed,
-versioned capability. Customer requests use one LLM call only to select a
-published capability and collect typed inputs. The browser execution itself has
-no LLM in the loop.
+versioned capability. Customer requests use one LLM call, when configured, only
+to select a published capability and collect typed inputs; an artifact relevance
+ranker is the provider fallback. The browser execution itself has no LLM in the
+loop.
 
 Two backend systems are driven by the same unmodified core — the live
 MERIDIAN CORE console (7 capabilities) and the bundled self-hosted

@@ -31,9 +31,9 @@ capabilities in total:
 
 The submission build adds two product surfaces around that core:
 
-- `/customer` — customer banking site with login; the LLM routes intent
-  only, and each logged-in member's chat is scoped to their own account
-  on their own backend system.
+- `/customer` — customer banking site with login; an LLM tool router (with an
+  artifact-ranked fallback) routes intent only, and each logged-in member's
+  chat is scoped to their own account on their own backend system.
 - `/` — bank-employee operations console with login, intervention actions,
   run history, correlated events, a per-step visual trail for escalated
   runs, and the approved capability catalog across both systems.
@@ -262,6 +262,12 @@ this public path needs neither private bank credentials nor an LLM API key.
 Never deploy production bank credentials with this unauthenticated submission
 surface.
 
+Chat routing is hybrid: when `ANTHROPIC_API_KEY` is configured, one LLM tool
+call ranks the approved capability artifacts and selects a clear match; when
+the key or provider is unavailable, a local artifact relevance ranker takes
+over. Both paths ask a specific clarification question rather than guessing
+when the intent or a required account ID is unclear.
+
 ## Live Demo Path (MERIDIAN CORE)
 
 This is the script for presenting the MERIDIAN CORE stretch adaptation live, in order: breadth first, then the safety/escalation story, then failure-handling.
@@ -304,8 +310,8 @@ check the balance of share 100987-MMKT-7
 
 Note there is no "for member ..." in the message — `member_id` is bound to
 the logged-in session server-side, not accepted from chat text at all. One
-LLM call routes the plain-language request to a capability name and typed
-arguments — it never touches the browser. Everything after that is
+The configured LLM call (or artifact-ranked fallback) routes the plain-language
+request to a capability name and typed arguments — it never touches the browser. Everything after that is
 deterministic replay of a recorded artifact, no model in the loop.
 `member_balance` reads the specific share named by `share_id`, not just
 whichever share happens to be listed first — verified live across members
