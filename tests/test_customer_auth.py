@@ -265,6 +265,57 @@ def test_public_demo_chat_uses_session_bound_synthetic_member(client, monkeypatc
     assert "$8,420.17" in response.get_json()["reply"]
 
 
+def test_chat_suggests_exact_owned_account_for_typo_without_replay(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+
+    def replay_must_not_start(*args, **kwargs):
+        raise AssertionError("invalid account input reached browser replay")
+
+    monkeypatch.setattr(service_app, "start_replay", replay_must_not_start)
+    _login(client, "100987")
+    response = client.post(
+        "/api/chat",
+        json={"message": "Check the balance for account 100987-S00019"},
+    )
+    body = response.get_json()
+    assert response.status_code == 200
+    assert body["clarification_required"] is True
+    assert "Did you mean 100987-S0001-9?" in body["reply"]
+    assert "Nothing was executed" in body["reply"]
+
+
+def test_chat_can_route_the_second_owned_account(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    captured = {}
+
+    def fake_start(system_key, capability, params, **kwargs):
+        captured.update(params=params)
+        return SimpleNamespace(run_id="replay-second-account")
+
+    monkeypatch.setattr(service_app, "start_replay", fake_start)
+    monkeypatch.setattr(
+        service_app,
+        "_await_result",
+        lambda run_id: {
+            "status": "done",
+            "result": {
+                "status": "success",
+                "outputs": {"account_balance": "$2,195.44", "account_status": "OPEN"},
+            },
+        },
+    )
+    _login(client, "100987")
+    response = client.post(
+        "/api/chat",
+        json={"message": "Check the balance for account 100987-S0001-9"},
+    )
+    assert response.status_code == 200
+    assert captured["params"]["account_no"] == "100987-S0001-9"
+    assert "$2,195.44" in response.get_json()["reply"]
+
+
 def test_chat_tool_schema_never_offers_member_id():
     """The routing model must not even see member_id as a parameter --
     identity comes from the session, not the conversation."""

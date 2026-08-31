@@ -41,6 +41,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from difflib import get_close_matches
 from pathlib import Path
 from typing import Any
 
@@ -1027,6 +1028,57 @@ def _clarification(reply: str) -> dict[str, Any]:
     return {"reply": reply, "status": 200, "clarification_required": True}
 
 
+_ACCOUNT_INPUT_NAMES = frozenset({
+    "account_no", "share_id", "from_account", "to_account",
+})
+
+
+def _suggest_owned_account(value: str, owned_accounts: list[str]) -> str | None:
+    """Suggest an owned ID, but never silently substitute a financial ID."""
+    normalized = value.upper()
+    compact = re.sub(r"[^A-Z0-9]", "", normalized)
+    for account in owned_accounts:
+        if re.sub(r"[^A-Z0-9]", "", account.upper()) == compact:
+            return account
+    matches = get_close_matches(normalized, owned_accounts, n=1, cutoff=0.72)
+    return matches[0] if matches else None
+
+
+def _validate_customer_account_inputs(
+    capability: Capability,
+    supplied: dict[str, str],
+    profile: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Fail before replay when chat names an account outside this session."""
+    if not _public_demo_synthetic():
+        return None
+
+    owned_accounts = [str(value) for value in profile.get("accounts", [])]
+    declared_inputs = {item.name for item in capability.inputs}
+    for input_name in _ACCOUNT_INPUT_NAMES & declared_inputs:
+        if input_name not in supplied:
+            continue
+        requested = supplied[input_name].upper()
+        if requested in owned_accounts:
+            supplied[input_name] = requested
+            continue
+
+        suggestion = _suggest_owned_account(requested, owned_accounts)
+        if suggestion:
+            return _clarification(
+                f"I couldn’t find account {requested} in your signed-in profile. "
+                f"Did you mean {suggestion}? Please send the request again with "
+                "the exact account ID. Nothing was executed."
+            )
+        choices = ", ".join(owned_accounts) or "no accounts are available"
+        return _clarification(
+            f"I couldn’t find account {requested} in your signed-in profile. "
+            f"Your available account IDs are: {choices}. Please use an exact "
+            "account ID. Nothing was executed."
+        )
+    return None
+
+
 def _public_demo_route(
     message: str, customer_id: str, profile: dict[str, Any]
 ) -> dict[str, Any]:
@@ -1239,6 +1291,14 @@ def api_chat():
     cap = get_capability(capability_id, system_key)
     if cap is None:
         return jsonify({"reply": f"Routed to unknown capability '{capability_id}'."})
+
+    account_validation = _validate_customer_account_inputs(cap, supplied, profile)
+    if account_validation is not None:
+        return jsonify({
+            "reply": account_validation["reply"],
+            "clarification_required": True,
+            "capability_id": capability_id,
+        }), int(account_validation.get("status", 200))
 
     if _public_demo_read_only() and _is_mutating(cap):
         return jsonify(
