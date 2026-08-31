@@ -1,414 +1,344 @@
-# Computer-Use Automation System
+# MERIDIAN CORE
 
-A small, end-to-end implementation of the record-once / replay-many model for
-operating legacy UIs that have no API:
+**A safe banking assistant that turns a customer's plain-language request into an approved, deterministic legacy-core workflow—with employee oversight for sensitive actions.**
 
-1. An **LLM-driven discovery agent** (Anthropic tool-calling + Playwright)
-   completes a natural-language goal against a live web app.
-2. The successful run is serialized into a **typed, versioned capability
-   artifact** (Pydantic) — parameterized steps, fallback locator chains,
-   checkpoints, declared business outcomes and recovery rules.
-3. A **deterministic replay engine** executes the artifact with **no model in
-   the loop**, classifying every run into success / business outcome / hard
-   failure, with recoverable conditions handled in-flight.
-4. A **policy gate** (allowlist + risky-action treatment + redaction) fronts
-   every action, and a **human handoff console** can take over the live
-   browser session and hand it back.
+MERIDIAN CORE combines three product surfaces:
 
-Two targets are driven by the same unmodified core, 17 recorded
-capabilities in total:
+- a customer banking experience with an intent-aware assistant;
+- an employee operations console for approvals, exceptions, history, and evidence;
+- a discovery system that records approved browser workflows as typed, versioned capability artifacts.
 
-- **mock_app** (bundled, self-hosted) — a legacy-style bank back-office
-  app (server-rendered tables, no test IDs, injectable runtime faults),
-  extended to 123 synthetic members and 10 recorded capabilities: member
-  lookup, per-account balance, funds transfer, contact-info update,
-  account close, card lock, loan application, bill pay, transaction
-  history, and a restricted account hold. See `REPORT.md` for design
-  reasoning and `evidence/` for recorded runs.
-- **MERIDIAN CORE** (live, external) — the credit-union servicing console
-  at `web-sample.interface-hiring.com`, 7 recorded capabilities (see the
-  adaptation section below).
+The central rule is simple:
 
-The submission build adds two product surfaces around that core:
+> The LLM may understand intent and help discover a workflow. It never authorizes, executes, or invents the result of a banking transaction.
 
-- `/customer` — customer banking site with login; an LLM tool router (with an
-  artifact-ranked fallback) routes intent only, and each logged-in member's
-  chat is scoped to their own account on their own backend system.
-- `/` — bank-employee operations console with login, intervention actions,
-  run history, correlated events, a per-step visual trail for escalated
-  runs, and the approved capability catalog across both systems.
+## Live product
 
-See `ARCHITECTURE.md` for the banking-grade target architecture and
-`DEPLOYMENT.md` for the container deployment path.
+| Surface | Link | Demo access |
+| --- | --- | --- |
+| Customer banking assistant | [Open customer site](https://meridian-automation-demo.onrender.com/customer/home) | Member `100987`, password `password` |
+| Employee operations console | [Open employee console](https://meridian-automation-demo.onrender.com/) | Supervisor `super1`, password `password` |
+| Employee sign-in | [Open employee login](https://meridian-automation-demo.onrender.com/employee/login) | `teller1` or `super1`, password `password` |
+| Service readiness | [View readiness](https://meridian-automation-demo.onrender.com/readyz) | No login required |
 
-## Setup
+The first request may take a short time while the free Render service wakes up.
 
-Requires Python 3.12.
+> **Safety notice:** the hosted submission is a synthetic banking demo. It contains no real customer data and cannot move real money. Write workflows run only against the bundled fake bank and pause for an authenticated employee decision at the commit step.
+
+## What to try
+
+Log in as customer `100987`, open the assistant, and try:
+
+```text
+What is my account name?
+Check the balance for account 100987-MMKT-11
+Show recent transactions for account 100987-MMKT-11
+Transfer $25 from 100987-MMKT-11 to 100987-S0001-9
+Place a hold on account 100987-S0001-9
+Show available banking capabilities
+```
+
+Read requests complete automatically. Write requests create a visible run, progress to the employee queue, and pause before the irreversible action. Sign in to the employee console to inspect the timeline and approve or deny the request.
+
+The assistant shows approved services five at a time. **Show more options** reveals the next five without flooding the chat.
+
+## Core idea: discover once, replay many times
+
+Legacy banking systems often have critical workflows but no usable API. MERIDIAN CORE converts a successful browser workflow into a controlled service:
+
+```mermaid
+flowchart LR
+    A[Supervised LLM discovery] --> B[Typed capability artifact]
+    B --> C[Review, test, version, publish]
+    C --> D[Approved capability catalog]
+    D --> E[Deterministic replay engine]
+    E --> F[Legacy banking UI]
+```
+
+1. A supervised discovery agent uses an LLM and Playwright against test or synthetic data.
+2. The successful action sequence is recorded as a typed JSON artifact with parameters, locator fallbacks, checkpoints, expected outcomes, recovery rules, and risk classifications.
+3. The artifact is reviewed, tested, versioned, and published to the approved catalog.
+4. Customer requests can invoke only published artifacts.
+5. The replay engine performs the approved steps with **no LLM in the execution loop**.
+
+The discovery implementation is in [`cua/discovery/`](cua/discovery/), the artifact contract is in [`cua/schema.py`](cua/schema.py), and deterministic execution is in [`cua/replay/`](cua/replay/).
+
+## Where the LLM is used
+
+There are two deliberately separated uses:
+
+| Stage | LLM responsibility | What the LLM cannot do |
+| --- | --- | --- |
+| Capability discovery | Explore a test UI and propose a reusable workflow artifact | Publish its own artifact or bypass review/policy |
+| Customer intent routing | Rank the approved artifacts and extract typed arguments | Access legacy credentials, authorize a write, control the browser, or declare transaction success |
+
+When `ANTHROPIC_API_KEY` is configured, the chat router uses one tool-selection call over the session-scoped approved catalog. If the provider is unavailable—or no key is configured—the service falls back to a local artifact relevance ranker. Ambiguous requests produce a specific clarification question instead of a guessed action.
+
+The public hosted demo intentionally works without an LLM key. Its deterministic fallback searches and ranks the same approved capability artifacts, so provider failure does not make approved banking services unavailable.
+
+## Customer request lifecycle
+
+```mermaid
+flowchart LR
+    C[Customer chat] --> S[Authenticated customer session]
+    S --> R[LLM router or artifact ranker]
+    R --> K[Approved capability catalog]
+    K --> P[Policy and parameter validation]
+    P --> O[Run orchestrator]
+    O --> E[Deterministic replay]
+    E --> B[Synthetic legacy bank]
+    O --> D[Employee dashboard]
+    E --> D
+    D --> H{Human decision required?}
+    H -->|Approve| E
+    H -->|Deny| X[Stop safely]
+```
+
+For every request:
+
+1. The logged-in member identity is bound on the server; the chatbot does not accept a different `member_id` from message text.
+2. The router searches only capabilities approved for that member's backend.
+3. Required account IDs and typed inputs are validated before execution.
+4. A run is created immediately, making `routing`, `running`, `waiting for employee`, `completed`, and `failed` states visible to employees.
+5. Read-only capabilities replay automatically.
+6. Sensitive writes pause at the actual commit step for confirmation or employee review.
+7. The result, timeline, redacted logs, and screenshot evidence remain correlated by run ID.
+
+## Employee operations console
+
+The dashboard is designed for bank operations teams, not automation engineers. It provides:
+
+- live counts for running, waiting, completed, and investigation-required runs;
+- a priority-ordered human intervention queue;
+- approve, deny, resume, abort, and manual-intervention controls;
+- plain-language run summaries with technical details available on demand;
+- chronological history and a per-step execution trail;
+- redacted events and screenshots for investigation;
+- an approved capability catalog with friendly names, risk, type, and approval requirements.
+
+Only an authenticated employee session can take an action. The public catalog and history can be inspected without granting approval authority.
+
+## Approved capability catalog
+
+The same engine drives two different browser targets with **17 recorded capabilities**.
+
+### MERIDIAN CORE target
+
+| Capability | Type |
+| --- | --- |
+| Sign on | Read/session |
+| Member inquiry | Read |
+| Member share balance | Read |
+| Funds transfer | Write + employee approval |
+| Update member information | Write + employee approval |
+| Open a new share | Write + employee approval |
+| Place an account hold | Restricted write + supervisor review |
+
+### Bundled synthetic bank
+
+| Capability | Type |
+| --- | --- |
+| Member inquiry | Read |
+| Account balance | Read |
+| Transaction history | Read |
+| Funds transfer | Write + employee approval |
+| Update contact information | Write + employee approval |
+| Close a zero-balance account | Write + employee approval |
+| Lock a card | Write + employee approval |
+| Submit a loan application | Write + employee approval |
+| Pay a bill | Write + employee approval |
+| Place an account hold | Restricted write + employee approval |
+
+Each catalog entry is a versioned artifact in [`artifacts/`](artifacts/), not a prompt-only tool definition.
+
+## Safety and reliability implemented in this submission
+
+- server-bound customer identity and backend scope;
+- infrastructure-bound legacy credentials excluded from chat and public tool schemas;
+- allowlisted, versioned capability artifacts;
+- read/reversible-write/irreversible-write risk classification;
+- employee approval at the real commit step;
+- idempotency keys for mutating API calls;
+- identity-anchored table locators that fail safely instead of reading a different account row;
+- bounded retries and recovery rules—never a blind retry after a possibly committed write;
+- endpoint rate limiting;
+- short-lived capability-catalog caching;
+- a circuit breaker around the external LLM router;
+- deterministic routing fallback and clear clarification prompts;
+- structured request logs, request IDs, redaction, and security headers;
+- health and readiness probes;
+- fail-closed error handling with customer-safe messages;
+- synthetic-only public writes and separation from real-bank credentials.
+
+### Result model
+
+Every run ends in a meaningful operational state:
+
+- **Success** — checkpoints and declared outputs were verified.
+- **Business outcome** — expected rejection such as insufficient funds, member not found, or a held account.
+- **Recoverable condition** — a bounded recovery rule handled UI drift or an interstitial.
+- **Waiting for employee** — policy requires a person before the next step.
+- **Hard failure** — execution stopped with the failed step, expected state, observed state, and evidence.
+
+A real financial write must also support an `EFFECT_UNKNOWN` reconciliation state when submission may have succeeded but confirmation was lost. The target design covers this in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## Production architecture and scaling
+
+This repository is a **production-shaped reference implementation**, not a certified bank-production deployment. It demonstrates the control model, execution engine, and product workflow in one deployable container.
+
+| Concern | Submission implementation | Required for a real bank rollout |
+| --- | --- | --- |
+| Authentication | Demo customer and employee sessions | Bank OIDC, short-lived JWT validation on every request, MFA/step-up auth, token replay protection |
+| Authorization | Session-bound customer identity and employee action gate | Tenant-aware RBAC/ABAC, account ownership checks, transaction limits, fraud/risk policy |
+| Rate limiting | Process-local endpoint limiter | API gateway/WAF plus shared Redis limits by tenant, customer, device, IP, endpoint, and operation cost |
+| Caching | Process-local TTL catalog cache | Encrypted, permission-aware distributed cache with bank-approved TTL and write invalidation |
+| Workflow state | In-memory run and approval state | Durable database, workflow engine, shared idempotency store, and durable job queue |
+| Browser execution | Container-local Chromium | Horizontally scaled isolated workers, tenant bulkheads, autoscaling, workload identity, and egress allowlists |
+| Resilience | Timeouts, bounded recovery, LLM circuit breaker, safe fallback | Per-dependency breakers, retry budgets, dead-letter handling, reconciliation, multi-zone recovery |
+| Logging | Structured redacted logs and correlated evidence | OpenTelemetry, centralized log platform, immutable audit store, encrypted object storage, SIEM alerts |
+| Secrets | Environment-injected demo credentials | Vault/KMS, short-lived credentials, rotation, least privilege, no secrets in app memory longer than needed |
+| Operations | Health/readiness checks and employee queue | SLOs, alerting, on-call runbooks, backups, disaster recovery, drift monitoring, capacity tests |
+| Governance | Reviewed capability files and policy gates | Signed artifact registry, maker-checker approval, staged rollout, rollback, retention and compliance controls |
+
+The detailed target design—including JWT, circuit breakers, caching boundaries, observability, centralized audit, worker isolation, and the request state machine—is documented in [`ARCHITECTURE.md`](ARCHITECTURE.md).
+
+## API surface
+
+```text
+GET  /healthz
+GET  /readyz
+GET  /api/capabilities
+POST /api/capabilities/{capability_id}/invoke
+GET  /api/runs
+GET  /api/runs/{run_id}
+POST /api/runs/{run_id}/command
+POST /api/chat
+```
+
+Mutating capability calls require an `Idempotency-Key`. Employee run commands require an authenticated employee session.
+
+## Run locally
+
+### Requirements
+
+- Python 3.12+
+- Chromium/Chrome or Playwright Chromium
+
+### Setup
 
 ```bash
-python3.12 -m venv .venv && source .venv/bin/activate
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-playwright install chromium          # skip if Chromium is already available
-cp .env.example .env                 # then put your Anthropic API key in .env
+playwright install chromium
+cp .env.example .env
 ```
 
-The API key is needed **only for discovery** in the original take-home flow
-below. Replay, the mock app, and the whole test suite run without any key or
-network access. The one exception is the MERIDIAN CORE chatbot further down
-this README -- it also calls the API live to route each chat message, so make
-sure your key is in `.env` before using its chat box.
-
-For the MERIDIAN service, also configure the server-owned operator and
-supervisor credentials shown in `.env.example`. Customers never provide these
-credentials and the routing LLM never receives them.
-
-If you cannot (or don't want to) let Playwright download a browser, point
-`CUA_CHROMIUM_PATH` in `.env` at an existing Chromium/Chrome binary.
-
-## Demo path
-
-Terminal 1 — start the mock bank back-office app:
+Start the bundled synthetic bank:
 
 ```bash
-python -m mock_app.app                       # serves http://127.0.0.1:5000
+python -m mock_app.app
 ```
 
-Terminal 2 — run the LLM discovery agent on a goal, producing an artifact:
+In a second terminal, start the product service:
+
+```bash
+source .venv/bin/activate
+python -m meridian_service.app
+```
+
+Open:
+
+- Customer: <http://127.0.0.1:5077/customer/home>
+- Employee console: <http://127.0.0.1:5077/>
+- Employee sign-in: <http://127.0.0.1:5077/employee/login>
+
+An Anthropic API key is optional for the product demo. Without one, chat uses the deterministic artifact ranker. It is required only when running a new LLM discovery session.
+
+## Discover and replay a capability
+
+Create a capability artifact with supervised discovery:
 
 ```bash
 python -m cua discover \
   --spec specs/open_sub_account.json \
   --out artifacts/open_sub_account.json \
-  --approve-risky        # operator pre-approval for the form submission (logged)
+  --approve-risky
 ```
 
-Replay that artifact deterministically (no LLM), with different inputs:
+Replay the recorded artifact with different inputs and no LLM:
 
 ```bash
 python -m cua replay artifacts/open_sub_account.json \
-  --param member_id=10456 --param product_type="Money Market" \
-  --param nickname="Emergency fund" --param initial_deposit=50.00 \
-  --confirm-risky        # caller sign-off for the risky submit step
+  --param member_id=10456 \
+  --param product_type="Money Market" \
+  --param nickname="Emergency fund" \
+  --param initial_deposit=50.00 \
+  --confirm-risky
 ```
 
-Useful variations:
+List published artifacts:
 
 ```bash
-# Business outcome: unknown member — reported as an outcome, not a failure
-python -m cua replay artifacts/open_sub_account.json \
-  --param member_id=99999 --param product_type="Money Market" \
-  --param nickname=x --param initial_deposit=50.00 --confirm-risky
-
-# Business outcome: validation rejection (deposit below the $5 minimum)
-python -m cua replay artifacts/open_sub_account.json \
-  --param member_id=10456 --param product_type="Money Market" \
-  --param nickname=x --param initial_deposit=1.00 --confirm-risky
-
-# Recoverable condition: restart the app with MOCK_CHAOS=interstitial and
-# replay — the session-notice interstitial is dismissed via a recorded
-# recovery rule and the run still succeeds.
-# Hard failure: restart with MOCK_CHAOS=broken — replay stops with a
-# structured failure (step, expected, observed) + screenshot + DOM snapshot.
-
-# Risky step without --confirm-risky: the run pauses and hands the live
-# session to the operator console (approve / deny / act manually / resume).
-
-# List recorded capabilities the way a calling agent would see them:
 python -m cua catalog
 ```
 
-Every run (discovery and replay) writes `runs/<run_id>/` with an
-`events.jsonl` structured log, screenshots, and `result.json` /
-`artifact.json`. The committed `evidence/` directory contains a real
-discovery run and replay runs for each outcome class — see
-`evidence/README.md`.
+Every discovery and replay run writes structured evidence beneath `runs/<run_id>/`. Committed examples are available in [`evidence/`](evidence/).
 
-## Running without live services
+## Tests
 
-No external services are used at all: the target app is local, and replay
-requires no key. To verify the system without an Anthropic key, run the test
-suite — it exercises discovery (with a scripted decider), recording, replay
-across all outcome classes, the policy gate, redaction, and handoff against
-the real app and a real browser:
+The test suite runs without an API key or network access:
 
 ```bash
 pytest -q
 ```
 
-## Layout
+It covers artifact validation, discovery recording, deterministic replay, business outcomes, recovery, escalation, authentication boundaries, session scoping, rate limiting, caching, circuit breaking, redaction, idempotency, and public-demo safety.
 
-```
-mock_app/          the legacy-style target app (Flask), 123 members,
-                   fault injection via MOCK_CHAOS
-cua/schema.py      capability artifact schema (the core data model)
-cua/browser.py     session, semantic page snapshot, locator chains + resolution
-cua/discovery/     goal spec, Anthropic decider, agent loop, recorder
-cua/replay/        deterministic engine + result contract
-cua/safety/        policy gate (allowlist, risk classes), redaction
-cua/escalation/    intervention requests + operator console (handoff)
-specs/             goal specifications (mock_app/ and meridian_core/)
-artifacts/         recorded capabilities (mock_app/ and meridian_core/)
-evidence/          committed example runs (discovery + replays)
-tests/             pytest suite (runs hermetically, no API key)
-meridian_service/  customer site + capability API + employee console,
-                   multi-backend (mock_app and MERIDIAN CORE)
-```
+## Deployment
 
-## Engine fixes found through real use
-
-Re-recording and replaying capabilities against both targets surfaced
-four real engine bugs, each verified live and fixed (with the fix
-exercised by replay across multiple inputs):
-
-1. **Wrong-column anchoring in data tables.** The recorder anchored a
-   data-cell read on whatever text sat in the adjacent column — right for
-   label:value forms, wrong for multi-column tables where every column is
-   data. A per-share balance check silently returned a different share's
-   figures. Fixed by re-anchoring the locator on whichever cell in the
-   row matches a declared input's value (the row's real identity), and by
-   making the replay engine substitute `{param}` templates into locator
-   text (it never had).
-2. **Silent wrong-row fallback.** When an identity-anchored locator found
-   zero rows (e.g. a share_id belonging to a different member), the
-   positional `dom_path` fallback still matched *some* row and returned
-   its data as if it were the answer. Fixed by dropping the positional
-   fallback for identity-anchored locators: a nonexistent identity now
-   fails cleanly through the three-bucket triage instead of returning
-   plausible wrong data.
-3. **First column unreadable.** A table's leftmost column has no
-   previous-sibling cell to serve as its label, so it had no readable ref
-   at all and the agent read the wrong cell. Fixed by falling back to the
-   column's `<th>` header text — with header-labeled cells getting a
-   purely positional locator, since a header identifies a column, never a
-   row.
-4. **Ambiguous repeated controls.** A "View"-style link repeated once per
-   row has the same accessible name in every row; its locator silently
-   resolved to a fixed row, opening a *different account's* page than
-   requested. Fixed by extending identity re-anchoring to controls inside
-   table rows, scoping them to the row containing the declared input's
-   value.
-
-Known remaining limitation: `mock_transaction_history`'s
-description/amount reads can misread when a transaction description
-repeats within one account's history — transaction rows genuinely have
-no per-row identity to anchor on.
-
-## MERIDIAN CORE adaptation
-
-The same core also drives a second, unrelated live target — MERIDIAN CORE, a
-credit-union servicing console at `web-sample.interface-hiring.com` — with no
-changes to the discovery loop, artifact schema, or replay engine themselves.
-See `ADAPTATION.md` for what adapting to it actually required.
-
-Record a capability against the live target (needs real network access —
-this will not work from a sandboxed/offline environment):
+The repository includes a Playwright-ready [`Dockerfile`](Dockerfile) and [`render.yaml`](render.yaml). The Render Blueprint builds the web service, launches the bundled synthetic bank, and exposes `/healthz` and `/readyz`.
 
 ```bash
-python -m cua discover \
-  --spec specs/meridian_core/member_balance.json \
-  --out artifacts/meridian_core/member_balance.json \
-  --policy policy_meridian.json \
-  --approve-risky
+docker build -t meridian-automation-demo .
+docker run --rm -p 10000:10000 --env-file .env meridian-automation-demo
 ```
 
-All 7 required functions are recorded and verified against the live target,
-in `artifacts/meridian_core/`: `sign_on`, `member_balance`, `funds_transfer`,
-`place_account_hold` (supervisor override), `member_inquiry`, `open_new_share`,
-and `update_member_info`.
+Keep `PUBLIC_DEMO_READ_ONLY=true`, `PUBLIC_DEMO_SYNTHETIC=true`, and `PUBLIC_DEMO_ALLOW_SYNTHETIC_WRITES=true` together for the hosted submission. This combination permits employee-approved writes only against the co-located fake bank. Never configure real bank credentials on that deployment.
 
-Run the customer site + capability API + employee console (for mock_app
-members, also start `python -m mock_app.app` in another terminal first):
+See [`DEPLOYMENT.md`](DEPLOYMENT.md) for deployment details.
 
-```bash
-python -m meridian_service.app
+## Repository map
+
+```text
+cua/schema.py          Typed capability artifact contract
+cua/discovery/         LLM discovery agent and recorder
+cua/replay/            Deterministic replay engine and result model
+cua/safety/            Policy gate and redaction
+cua/escalation/        Human intervention and browser-session handoff
+meridian_service/      Customer site, chat router, API, and employee console
+mock_app/              Bundled synthetic legacy banking system
+artifacts/             17 approved, versioned capability artifacts
+specs/                 Discovery goal specifications
+evidence/              Committed discovery and replay evidence
+tests/                 Hermetic automated test suite
 ```
 
-Then open **http://127.0.0.1:5077/customer** — a public landing page with a
-login. Log in with a member number and the demo password `password` (the
-same fixed-demo-password convention as the operator/supervisor logins
-below). Two kinds of members work:
+## Design documents
 
-- **MERIDIAN CORE members** (live external target): `100234`, `100987`,
-  `101555`, `102777`, `103001`
-- **mock_app members** (your own local target, faster and reset-free):
-  `20001`, `20002`, `20003`
+- [`REPORT.md`](REPORT.md) — implementation decisions and take-home analysis
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — real-bank target architecture
+- [`ADAPTATION.md`](ADAPTATION.md) — adapting the engine to a second legacy UI
+- [`DEPLOYMENT.md`](DEPLOYMENT.md) — Docker and Render deployment
+- [`SUBMISSION.md`](SUBMISSION.md) — five-minute reviewer walkthrough
 
-That lands on a per-member home page with live account cards and a floating
-assistant widget. Once logged in, `member_id` is bound to that session
-server-side and stripped from the assistant's tool schema entirely — it is
-never accepted from chat text, so a member's chat can only ever act on their
-own account, no matter what they type. The tool catalog itself is also
-scoped per backend: a mock_app member's chat never even sees MERIDIAN CORE
-capabilities, and vice versa. Open
-**http://127.0.0.1:5077/** for the employee operations console — viewable
-read-only by anyone, but approving, denying, resuming, or aborting a paused
-run requires an employee login (`teller1` or `super1`, demo password
-`password` — the same identities the replay engine itself signs into
-MERIDIAN CORE with). The customer request routes to an approved capability
-and then runs the real deterministic replay; interventions, run history, and
-a per-step visual trail (screenshots of every step, ending at wherever it
-stopped) are visible to the employee. `GET /api/capabilities` and
-`POST /api/capabilities/<id>/invoke` are the callable API a calling agent
-would use directly, with no knowledge of the underlying UI (each listed
-capability carries its `system`). Mutating calls
-require an `Idempotency-Key` header and pause at the actual commit action unless
-an authorized caller supplies confirmation.
+## Current limitations
 
-Set `PUBLIC_DEMO_READ_ONLY=true` for every public submission deployment. It
-blocks every write to a non-synthetic backend until bank SSO/JWT and role-based
-authorization are integrated. With `PUBLIC_DEMO_SYNTHETIC=true` and
-`PUBLIC_DEMO_ALLOW_SYNTHETIC_WRITES=true`, recorded writes may run only against
-the bundled fake bank; they still pause at the commit step for an authenticated
-employee decision. This path needs neither private bank credentials nor an LLM
-API key. Never deploy production bank credentials with this submission surface.
+- Customer and employee passwords are demo credentials, not bank authentication.
+- Run state, rate-limit state, idempotency records, and approvals are process-local.
+- Evidence is stored on the container filesystem rather than encrypted durable storage.
+- The hosted demo uses one web process so live intervention state remains coherent.
+- Browser workers are not yet separated into an autoscaled worker tier.
+- Repeated transaction descriptions can make the synthetic transaction-history row locator ambiguous because the legacy table has no unique transaction-row identifier.
 
-Chat routing is hybrid: when `ANTHROPIC_API_KEY` is configured, one LLM tool
-call ranks the approved capability artifacts and selects a clear match; when
-the key or provider is unavailable, a local artifact relevance ranker takes
-over. Both paths ask a specific clarification question rather than guessing
-when the intent or a required account ID is unclear.
-
-## Live Demo Path (MERIDIAN CORE)
-
-This is the script for presenting the MERIDIAN CORE stretch adaptation live, in order: breadth first, then the safety/escalation story, then failure-handling.
-
-**Before presenting**, start the service and confirm it's up:
-
-```bash
-cd cua-take-home
-source .venv/bin/activate
-python -m meridian_service.app
-```
-
-Open **http://127.0.0.1:5077/customer** for the customer site and
-**http://127.0.0.1:5077/** for the employee console. Confirm the console
-loads the capability catalog (17 total: 7 MERIDIAN CORE + 10 mock_app;
-this demo path uses the MERIDIAN CORE ones).
-
-**One thing to know going in:** this demo environment's data can reset between sessions (member share IDs and balances can change). The numbers below are what worked as of the last test. If the live page shows something different, that's fine — just read out whatever it actually shows. The 5 real members on the live target are `100234`, `100987`, `101555`, `102777`, `103001`, all with demo password `password`. To approve/deny anything from the console, also sign in there as an employee (`teller1`/`password`) — the console is viewable read-only without it.
-
-### Step 1 — Capability catalog (10 seconds)
-
-Point at the dashboard's catalog panel — capabilities are shown as employee-facing cards (friendly name, category, read-only/write, risk, approval requirement), with the raw capability ID and signature tucked behind a "Technical details" disclosure. All 7 required functions are recorded and callable right now. Example signature:
-
-```
-meridian_member_balance(member_id, share_id)
-  -> {share_balance, share_status}
-```
-
-### Step 2 — Customer login and self-service (success path)
-
-At `/customer`, log in as member `100987`. The home page shows two real,
-live-fetched account cards — reading every one of a member's shares would
-mean a full fresh sign-on per share, so the page shows a couple of real
-accounts rather than an exhaustive dynamic listing. Click the floating
-assistant icon and type:
-
-```
-check the balance of share 100987-MMKT-7
-```
-
-Note there is no "for member ..." in the message — `member_id` is bound to
-the logged-in session server-side, not accepted from chat text at all. One
-The configured LLM call (or artifact-ranked fallback) routes the plain-language
-request to a capability name and typed arguments — it never touches the browser. Everything after that is
-deterministic replay of a recorded artifact, no model in the loop.
-`member_balance` reads the specific share named by `share_id`, not just
-whichever share happens to be listed first — verified live across members
-with 12+ shares, and a nonexistent or another member's share_id now fails
-cleanly instead of silently returning a different share's data (an actual
-bug found and fixed while re-recording this capability).
-
-Expected reply (as of the last test — numbers may differ if the environment reset):
-
-```
-bot: Done. meridian_member_balance succeeded:
-share_balance=$40.00, share_status=OPEN
-```
-
-**The session-scoping is worth demonstrating directly:** still logged in as
-`100987`, ask the assistant about a share that belongs to a different member,
-e.g. `check the balance of share 100234-S0001-6`. It fails cleanly (that
-share genuinely doesn't exist on member 100987's page) rather than returning
-member 100234's data — the chat literally cannot act on another member's
-account, by construction, not just by prompt instruction.
-
-### Step 3 — Chat: funds transfer (escalation path)
-
-Log in as member `102777` and, in the assistant, type:
-
-```
-transfer $1 from share 102777-MMKT-3 to share 102777-MMKT-4, memo routine transfer
-```
-
-This is a risky, irreversible action, so it pauses instead of just running. Expected: the run shows status `awaiting_human`:
-
-```
-bot: I started 'meridian_funds_transfer' but it needs a human decision
-before continuing: step 's14_click_post_transfer' is classified RISKY...
-Open the dashboard to look at the live session and approve, deny, or
-act on it.
-```
-
-That pause is enforced inside the replay engine itself, not the chatbot or API layer — no code path can skip it.
-
-The capability pauses once, at the actual irreversible **Post Transfer** step.
-The employee can approve or deny it directly from the operations console (sign
-in first at `/employee/login` as `teller1`/`password`). The same action is
-also available through the command API — it requires that same employee
-session (an anonymous request now gets a clean 401, not a silent approval):
-
-```bash
-curl -s -c cookies.txt -X POST http://127.0.0.1:5077/employee/login \
-  -d "employee_id=teller1&password=password"
-curl -s -b cookies.txt -X POST http://127.0.0.1:5077/api/runs/RUN_ID/command \
-  -H "Content-Type: application/json" -d '{"command":"approve"}'
-```
-
-To check the run's current status (same RUN_ID), use:
-
-```bash
-curl -s http://127.0.0.1:5077/api/runs/RUN_ID
-```
-
-Approve once, then check the run again. If the source share is on `HOLD`, the
-engine reports the declared `share_on_hold` business outcome instead of
-misclassifying it as an automation failure. If the demo data has changed, use
-two shares currently shown as `OPEN` for the member.
-
-### Step 4 — The supervisor-override capability
-
-`place_account_hold` is customer-callable in this demo build the same way the
-other six are — log in as member `103001` and, in the assistant, type
-`place a hold on share 103001-MMKT-4, reason routine review` to exercise it
-(the supervisor credential is infrastructure-bound regardless of which
-customer is logged in, same as the operator credential is for the others).
-**Worth calling out as a real product question, not glossed over:** a
-customer requesting a hold on their *own* account is an unusual self-service
-action — placing an account hold (fraud/legal/deceased) is normally a
-bank-initiated, employee-only action. A real deployment would likely restrict
-this capability to the employee console rather than the customer chat; this
-demo exposes all 7 recorded capabilities identically to keep the coverage
-story simple. Real recorded outcome from initial adaptation: share
-`103001-MMKT-2`, confirmation reference `CN480159`.
-
-### Step 5 — Quick coverage flex (only if time allows)
-
-Log in as member `100234` and ask the assistant `what's my name on file`.
-
-Real recorded result: `member_name=Lovelace, Ada`. `member_inquiry` returns only the member's name — this legacy system has no member-level status field, only per-share status (that's what `member_balance` is for); an earlier version of this capability approximated a "member status" from whichever share happened to be listed first, which silently broke once that member's first share stopped being the OPEN one. This is the 7th function, read-only member lookup. Skip this step if short on time — Steps 1–4 already prove the important things.
-
-### Step 6 — An exceptional state (proves the 3-bucket taxonomy)
-
-Customer chat can no longer reference an arbitrary member number (Step 2's
-scoping demo is why), so this one goes through the direct capability API
-instead — representing a calling agent invoking a capability directly, the
-same surface `GET /api/capabilities` documents:
-
-```bash
-curl -s -X POST http://127.0.0.1:5077/api/capabilities/meridian_member_inquiry/invoke \
-  -H "Content-Type: application/json" -H "Idempotency-Key: demo-not-found-1" \
-  -d '{"params":{"member_id":"999999"}}'
-```
-
-Poll `GET /api/runs/RUN_ID` for the result. Expected: a clean `member_not_found` business outcome (HTTP 404 under the hood) — reported as a normal, non-alarming result, not an error. Every run in this system sorts into exactly one of three buckets: business outcome, recoverable condition, hard failure — including runs coming through the customer chat and this API layer, verified live.
+These limitations are explicit so the demo can be evaluated honestly: the safety model is implemented, while the remaining infrastructure work for a real financial institution is clearly separated and documented.
