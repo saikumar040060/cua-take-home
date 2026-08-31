@@ -1031,6 +1031,24 @@ def _clarification(reply: str) -> dict[str, Any]:
 _ACCOUNT_INPUT_NAMES = frozenset({
     "account_no", "share_id", "from_account", "to_account",
 })
+_ACCOUNT_ID_PATTERN = re.compile(r"\b\d{6}-(?:[a-z0-9]+)-?\d*\b", re.IGNORECASE)
+_PENDING_CHAT_CAPABILITY_KEY = "pending_chat_capability_id"
+
+
+def _extract_account_id(message: str) -> str | None:
+    match = _ACCOUNT_ID_PATTERN.search(message)
+    return match.group(0).upper() if match is not None else None
+
+
+def _account_clarification_reply(message: str) -> str | None:
+    """Accept an account-only answer without hijacking a new full request."""
+    account_id = _extract_account_id(message)
+    if account_id is None:
+        return None
+    remaining = _ACCOUNT_ID_PATTERN.sub(" ", message.lower())
+    words = set(re.findall(r"[a-z]+", remaining))
+    filler = {"account", "id", "is", "please", "the", "use"}
+    return account_id if words <= filler else None
 
 
 def _suggest_owned_account(value: str, owned_accounts: list[str]) -> str | None:
@@ -1151,14 +1169,23 @@ def _public_demo_route(
             "Please tell me which one you want. Nothing was executed."
         )
 
+    # Classify writes before asking for parameters the public demo cannot use.
+    # The common API guard below remains the single source of the block message.
+    if _public_demo_read_only() and _is_mutating(selected_capability):
+        return {
+            "capability_id": selected_capability.capability_id,
+            "input": {},
+            "ranked_score": top_score,
+        }
+
     supplied: dict[str, str] = {}
     requested_account = next(
         (account for account in accounts if account.lower() in normalized),
         None,
     )
-    typed_account = re.search(r"\b\d{6}-(?:[a-z0-9]+)-?\d*\b", normalized)
+    typed_account = _extract_account_id(normalized)
     if typed_account is not None:
-        requested_account = typed_account.group(0).upper()
+        requested_account = typed_account
 
     client_inputs = {
         item.name for item in _client_inputs(
@@ -1170,10 +1197,13 @@ def _public_demo_route(
     if "account_no" in client_inputs:
         if requested_account is None:
             account_choices = ", ".join(accounts) or "the account ID"
-            return _clarification(
-                f"Which account should I use? Please include one of these account "
-                f"IDs in your request: {account_choices}. Nothing was executed."
-            )
+            return {
+                **_clarification(
+                    f"Which account should I use? Please include one of these account "
+                    f"IDs in your request: {account_choices}. Nothing was executed."
+                ),
+                "pending_capability_id": selected_capability.capability_id,
+            }
         supplied["account_no"] = requested_account
 
     # Public write requests are classified here, then stopped by the common
@@ -1279,8 +1309,36 @@ def api_chat():
     # The router sees only this backend's approved capability artifacts.
     # member_id is absent from its tool schemas and is bound from the session
     # below, so neither LLM output nor customer text can switch identities.
-    routed = _route_customer_message(message, customer_id, profile)
+    pending_capability_id = str(
+        session.get(_PENDING_CHAT_CAPABILITY_KEY, "")
+    )
+    account_reply = _account_clarification_reply(message)
+    pending_capability = (
+        get_capability(pending_capability_id, system_key)
+        if pending_capability_id and account_reply
+        else None
+    )
+    pending_inputs = {
+        item.name for item in _client_inputs(
+            pending_capability,
+            bound=SYSTEMS[system_key].credential_bound_inputs,
+            exclude=frozenset({"member_id"}),
+        )
+    } if pending_capability is not None else set()
+
+    if pending_capability is not None and "account_no" in pending_inputs:
+        routed = {
+            "capability_id": pending_capability.capability_id,
+            "input": {"account_no": account_reply},
+        }
+    else:
+        # A new intent replaces any old unfinished clarification.
+        session.pop(_PENDING_CHAT_CAPABILITY_KEY, None)
+        routed = _route_customer_message(message, customer_id, profile)
     if "reply" in routed:
+        routed_pending = routed.get("pending_capability_id")
+        if routed_pending:
+            session[_PENDING_CHAT_CAPABILITY_KEY] = str(routed_pending)
         payload = {"reply": routed["reply"]}
         if routed.get("clarification_required"):
             payload["clarification_required"] = True
@@ -1294,11 +1352,14 @@ def api_chat():
 
     account_validation = _validate_customer_account_inputs(cap, supplied, profile)
     if account_validation is not None:
+        session[_PENDING_CHAT_CAPABILITY_KEY] = capability_id
         return jsonify({
             "reply": account_validation["reply"],
             "clarification_required": True,
             "capability_id": capability_id,
         }), int(account_validation.get("status", 200))
+
+    session.pop(_PENDING_CHAT_CAPABILITY_KEY, None)
 
     if _public_demo_read_only() and _is_mutating(cap):
         return jsonify(

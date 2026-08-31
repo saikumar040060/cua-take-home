@@ -167,6 +167,7 @@ def test_artifact_ranker_asks_specific_question_when_information_is_missing():
     }
     routed = _public_demo_route("Check my balance", "100987", profile)
     assert routed["clarification_required"] is True
+    assert routed["pending_capability_id"] == "mock_member_balance"
     assert "Which account" in routed["reply"]
     assert "100987-MMKT-11" in routed["reply"]
 
@@ -263,6 +264,66 @@ def test_public_demo_chat_uses_session_bound_synthetic_member(client, monkeypatc
         "params": {"account_no": "100987-MMKT-11", "member_id": "100987"},
     }
     assert "$8,420.17" in response.get_json()["reply"]
+
+
+def test_public_demo_blocks_hold_before_requesting_account(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+
+    def replay_must_not_start(*args, **kwargs):
+        raise AssertionError("public write request reached browser replay")
+
+    monkeypatch.setattr(service_app, "start_replay", replay_must_not_start)
+    _login(client, "100987")
+    response = client.post(
+        "/api/chat",
+        json={"message": "Place a hold on my account"},
+    )
+    body = response.get_json()
+    assert response.status_code == 403
+    assert body["capability_id"] == "mock_place_hold"
+    assert "Writes are disabled" in body["reply"]
+    assert "Which account" not in body["reply"]
+
+
+def test_account_only_reply_continues_pending_balance_request(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    captured = {}
+
+    def fake_start(system_key, capability, params, **kwargs):
+        captured.update(capability=capability.capability_id, params=params)
+        return SimpleNamespace(run_id="replay-pending-account")
+
+    monkeypatch.setattr(service_app, "start_replay", fake_start)
+    monkeypatch.setattr(
+        service_app,
+        "_await_result",
+        lambda run_id: {
+            "status": "done",
+            "result": {
+                "status": "success",
+                "outputs": {"account_balance": "$2,195.44", "account_status": "OPEN"},
+            },
+        },
+    )
+    _login(client, "100987")
+
+    clarification = client.post(
+        "/api/chat", json={"message": "Check my balance"}
+    )
+    assert clarification.status_code == 200
+    assert clarification.get_json()["clarification_required"] is True
+
+    response = client.post(
+        "/api/chat", json={"message": "100987-S0001-9"}
+    )
+    assert response.status_code == 200
+    assert captured == {
+        "capability": "mock_member_balance",
+        "params": {"account_no": "100987-S0001-9", "member_id": "100987"},
+    }
+    assert "$2,195.44" in response.get_json()["reply"]
 
 
 def test_chat_suggests_exact_owned_account_for_typo_without_replay(client, monkeypatch):
