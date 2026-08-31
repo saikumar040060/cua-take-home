@@ -255,12 +255,12 @@ require an `Idempotency-Key` header and pause at the actual commit action unless
 an authorized caller supplies confirmation.
 
 Set `PUBLIC_DEMO_READ_ONLY=true` for every public submission deployment. It
-blocks all write capabilities and employee commands until bank SSO/JWT and
-role-based authorization are integrated. Set `PUBLIC_DEMO_SYNTHETIC=true` to
-run the bundled synthetic bank and safe deterministic read-only chat router;
-this public path needs neither private bank credentials nor an LLM API key.
-Never deploy production bank credentials with this unauthenticated submission
-surface.
+blocks every write to a non-synthetic backend until bank SSO/JWT and role-based
+authorization are integrated. With `PUBLIC_DEMO_SYNTHETIC=true` and
+`PUBLIC_DEMO_ALLOW_SYNTHETIC_WRITES=true`, recorded writes may run only against
+the bundled fake bank; they still pause at the commit step for an authenticated
+employee decision. This path needs neither private bank credentials nor an LLM
+API key. Never deploy production bank credentials with this submission surface.
 
 Chat routing is hybrid: when `ANTHROPIC_API_KEY` is configured, one LLM tool
 call ranks the approved capability artifacts and selects a clear match; when

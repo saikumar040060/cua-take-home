@@ -130,6 +130,6 @@
   </div>
 </main>
 
-<footer>MERIDIAN — submission demo environment. {% if public_demo_read_only %}Public read-only mode: write actions are disabled.{% else %}Private demo session.{% endif %} Not a real financial institution.</footer>
+<footer>MERIDIAN — submission demo environment. {% if synthetic_writes_enabled %}Synthetic write workflows require employee approval and never reach a real bank.{% elif public_demo_read_only %}Public read-only mode: write actions are disabled.{% else %}Private demo session.{% endif %} Not a real financial institution.</footer>
 </body>
 </html>

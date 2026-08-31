@@ -153,7 +153,10 @@ _REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 # listing.
 CUSTOMER_DEMO_PASSWORD = "password"
 KNOWN_CUSTOMERS: dict[str, dict[str, Any]] = {
-    "100987": {"system": "meridian_core", "accounts": ["100987-MMKT-11", "100987-S0001-9"]},
+    "100987": {
+        "system": "meridian_core",
+        "accounts": ["100987-MMKT-11", "100987-S0001-9", "100987-S0002-0"],
+    },
     "100234": {"system": "meridian_core", "accounts": ["100234-S0001-6", "100234-MMKT-16"]},
     "101555": {"system": "meridian_core", "accounts": ["101555-CERT-4", "101555-S0001-5"]},
     "102777": {"system": "meridian_core", "accounts": ["102777-MMKT-3", "102777-MMKT-4"]},
@@ -212,6 +215,14 @@ def _public_demo_synthetic() -> bool:
     if configured is None:
         return _public_demo_read_only()
     return configured.lower() == "true"
+
+
+def _synthetic_writes_enabled(system_key: str | None = None) -> bool:
+    """Permit risky actions only against the bundled, synthetic bank."""
+    configured = os.environ.get("PUBLIC_DEMO_ALLOW_SYNTHETIC_WRITES")
+    enabled = True if configured is None else configured.lower() == "true"
+    correct_system = system_key is None or system_key == "mock_app"
+    return enabled and correct_system and _public_demo_synthetic()
 
 
 def _customer_profile(customer_id: str) -> dict[str, Any]:
@@ -309,6 +320,7 @@ def readyz():
         "capabilities": count,
         "public_demo_read_only": _public_demo_read_only(),
         "synthetic_backend": _public_demo_synthetic(),
+        "synthetic_writes_enabled": _synthetic_writes_enabled(),
         "router_mode": (
             "llm_with_artifact_fallback"
             if os.environ.get("ANTHROPIC_API_KEY")
@@ -664,7 +676,11 @@ def api_invoke(capability_id: str):
         return jsonify({"error": "params must be a JSON object"}), 400
     if "confirm_risky" in body and not isinstance(body["confirm_risky"], bool):
         return jsonify({"error": "confirm_risky must be a boolean"}), 400
-    if _public_demo_read_only() and _is_mutating(cap):
+    if (
+        _public_demo_read_only()
+        and _is_mutating(cap)
+        and not _synthetic_writes_enabled(system_key)
+    ):
         return jsonify(
             {
                 "error": "public_demo_read_only",
@@ -723,13 +739,6 @@ def api_run(run_id: str):
 
 @app.post("/api/runs/<run_id>/command")
 def api_run_command(run_id: str):
-    if _public_demo_read_only():
-        return jsonify(
-            {
-                "error": "public_demo_read_only",
-                "message": "Employee commands are disabled on the public demo.",
-            }
-        ), 403
     employee_id = current_employee_id()
     if employee_id is None:
         return jsonify(
@@ -742,6 +751,14 @@ def api_run_command(run_id: str):
     state = RUNS.get(run_id)
     if state is None:
         return jsonify({"error": "unknown run"}), 404
+    run_system = find_capability_system(state.capability_id)
+    if _public_demo_read_only() and not _synthetic_writes_enabled(run_system):
+        return jsonify(
+            {
+                "error": "public_demo_read_only",
+                "message": "Employee commands are disabled for non-synthetic runs.",
+            }
+        ), 403
     if state.status != "awaiting_human":
         return jsonify({"error": "run is not awaiting human action"}), 409
     body = request.get_json(force=True, silent=True) or {}
@@ -840,20 +857,21 @@ def _load_customer_home(customer_id: str) -> dict[str, Any]:
     cfg = _HOME_CAPABILITIES[system_key]
 
     if _public_demo_synthetic():
-        from mock_app.data import MEMBERS
+        try:
+            from urllib.request import urlopen
 
-        member = MEMBERS.get(str(backend_member_id))
-        if member is not None:
-            account_by_id = {account.number: account for account in member.accounts}
+            with urlopen(
+                f"http://127.0.0.1:5000/internal/members/{backend_member_id}/overview",
+                timeout=2,
+            ) as response:
+                overview = json.load(response)
+            account_by_id = {
+                account["share_id"]: account for account in overview["accounts"]
+            }
             return {
-                "member_name": member.name,
+                "member_name": overview["member_name"],
                 "accounts": [
-                    {
-                        "share_id": account_id,
-                        "balance": account_by_id[account_id].balance,
-                        "status": account_by_id[account_id].status,
-                        "ok": True,
-                    }
+                    account_by_id[account_id]
                     if account_id in account_by_id
                     else {
                         "share_id": account_id,
@@ -864,6 +882,31 @@ def _load_customer_home(customer_id: str) -> dict[str, Any]:
                     for account_id in profile.get("accounts", [])
                 ],
             }
+        except Exception:  # noqa: BLE001 - readiness catches persistent failures
+            from mock_app.data import MEMBERS
+
+            member = MEMBERS.get(str(backend_member_id))
+            if member is not None:
+                account_by_id = {account.number: account for account in member.accounts}
+                return {
+                    "member_name": member.name,
+                    "accounts": [
+                        {
+                            "share_id": account_id,
+                            "balance": account_by_id[account_id].balance,
+                            "status": account_by_id[account_id].status,
+                            "ok": True,
+                        }
+                        if account_id in account_by_id
+                        else {
+                            "share_id": account_id,
+                            "balance": None,
+                            "status": None,
+                            "ok": False,
+                        }
+                        for account_id in profile.get("accounts", [])
+                    ],
+                }
 
     specifications: list[tuple[str, Capability | None, dict[str, str]]] = []
 
@@ -929,6 +972,12 @@ def _plain_language_reply(capability_id: str, outcome: dict) -> str:
     result = outcome.get("result") or {}
     if status == "awaiting_human":
         iv = outcome.get("intervention") or {}
+        if iv.get("reason") == "risky_action_confirmation":
+            return (
+                "The request is prepared in the synthetic demo bank and is now "
+                "waiting for an employee to approve or deny the final action. "
+                f"Review reference: {outcome.get('run_id')}. No write was committed yet."
+            )
         return (
             f"I started '{capability_id}' but it needs a human decision before continuing: "
             f"{iv.get('message', 'a risky or unrecognized step was reached')}. "
@@ -1073,6 +1122,17 @@ def _account_clarification_reply(message: str) -> str | None:
     return account_id if words <= filler else None
 
 
+def _extract_currency_amount(message: str) -> str | None:
+    match = re.search(r"\$\s*([0-9][0-9,]*(?:\.\d{1,2})?)", message)
+    if match is None:
+        match = re.search(
+            r"\bamount(?:\s+of)?\s+([0-9][0-9,]*(?:\.\d{1,2})?)\b",
+            message,
+            re.IGNORECASE,
+        )
+    return match.group(1).replace(",", "") if match is not None else None
+
+
 def _suggest_owned_account(value: str, owned_accounts: list[str]) -> str | None:
     """Suggest an owned ID, but never silently substitute a financial ID."""
     normalized = value.upper()
@@ -1143,13 +1203,15 @@ def _public_demo_route(
     if any(word in normalized for word in ("capabilities", "capability", "what can you", "services")):
         return {
             "reply": (
-                "In this read-only public demo I can:\n"
+                "In this safe synthetic demo I can:\n"
                 "• check the balance and status of your accounts\n"
                 "• show your most recent transaction\n"
-                "• look up the name on your member record\n\n"
+                "• look up the name on your member record\n"
+                "• run write workflows against the supplied demo bank after "
+                "employee approval\n\n"
                 "Transfers, contact updates, card controls, bill pay, loans, "
-                "holds, and account closure are approved catalog capabilities, "
-                "but writes are disabled on the public site."
+                "holds, and account closure use synthetic data only; no real "
+                "bank or real funds are connected."
             ),
             "status": 200,
         }
@@ -1191,9 +1253,13 @@ def _public_demo_route(
             "Please tell me which one you want. Nothing was executed."
         )
 
-    # Classify writes before asking for parameters the public demo cannot use.
-    # The common API guard below remains the single source of the block message.
-    if _public_demo_read_only() and _is_mutating(selected_capability):
+    # Non-synthetic public writes fail closed. The bundled fake bank continues
+    # through typed input collection and pauses at its real commit step.
+    if (
+        _public_demo_read_only()
+        and _is_mutating(selected_capability)
+        and not _synthetic_writes_enabled(str(profile["system"]))
+    ):
         return {
             "capability_id": selected_capability.capability_id,
             "input": {},
@@ -1201,6 +1267,9 @@ def _public_demo_route(
         }
 
     supplied: dict[str, str] = {}
+    mentioned_accounts = [
+        match.group(0).upper() for match in _ACCOUNT_ID_PATTERN.finditer(message)
+    ]
     requested_account = next(
         (account for account in accounts if account.lower() in normalized),
         None,
@@ -1209,27 +1278,87 @@ def _public_demo_route(
     if typed_account is not None:
         requested_account = typed_account
 
-    client_inputs = {
-        item.name for item in _client_inputs(
-            selected_capability,
-            bound=SYSTEMS[str(profile["system"])].credential_bound_inputs,
-            exclude=frozenset({"member_id"}),
-        )
-    }
+    client_input_defs = _client_inputs(
+        selected_capability,
+        bound=SYSTEMS[str(profile["system"])].credential_bound_inputs,
+        exclude=frozenset({"member_id"}),
+    )
+    client_inputs = {item.name for item in client_input_defs}
     if "account_no" in client_inputs:
         if requested_account is None:
-            account_choices = ", ".join(accounts) or "the account ID"
-            return {
-                **_clarification(
-                    f"Which account should I use? Please include one of these account "
-                    f"IDs in your request: {account_choices}. Nothing was executed."
-                ),
-                "pending_capability_id": selected_capability.capability_id,
-            }
-        supplied["account_no"] = requested_account
+            pass
+        else:
+            supplied["account_no"] = requested_account
 
-    # Public write requests are classified here, then stopped by the common
-    # read-only policy guard before missing write parameters are validated.
+    if "from_account" in client_inputs and mentioned_accounts:
+        supplied["from_account"] = mentioned_accounts[0]
+    if "to_account" in client_inputs and len(mentioned_accounts) > 1:
+        supplied["to_account"] = mentioned_accounts[1]
+    if "amount" in client_inputs:
+        amount = _extract_currency_amount(message)
+        if amount is not None:
+            supplied["amount"] = amount
+    if "reason" in client_inputs:
+        for reason in (
+            "Suspected Fraud", "Legal / Levy", "Deceased Member", "Chargeback Pending",
+        ):
+            if reason.lower() in normalized:
+                supplied["reason"] = reason
+                break
+    if "card_last4" in client_inputs:
+        card_match = re.search(
+            r"(?:card(?:\s+ending)?\s+(?:in\s+)?|ending\s+in\s+)(\d{4})\b",
+            message,
+            re.IGNORECASE,
+        )
+        if card_match is not None:
+            supplied["card_last4"] = card_match.group(1)
+    if "payee_id" in client_inputs:
+        payee_match = re.search(r"\bPY\d{4}\b", message, re.IGNORECASE)
+        if payee_match is not None:
+            supplied["payee_id"] = payee_match.group(0).upper()
+    if "purpose" in client_inputs:
+        for purpose in ("Auto", "Home Improvement", "Debt Consolidation", "Personal"):
+            if purpose.lower() in normalized:
+                supplied["purpose"] = purpose
+                break
+    if "phone" in client_inputs:
+        phone_match = re.search(
+            r"phone(?:\s+number)?\s+(?:to\s+)?(.+?)(?=\s+and\s+address|$)",
+            message,
+            re.IGNORECASE,
+        )
+        if phone_match is not None:
+            supplied["phone"] = phone_match.group(1).strip()
+    if "address" in client_inputs:
+        address_match = re.search(r"address\s+(?:to\s+)?(.+)$", message, re.IGNORECASE)
+        if address_match is not None:
+            supplied["address"] = address_match.group(1).strip()
+
+    missing = [
+        item.name for item in client_input_defs
+        if item.required and item.name not in supplied
+    ]
+    if missing == ["account_no"]:
+        account_choices = ", ".join(accounts) or "the account ID"
+        return {
+            **_clarification(
+                f"Which account should I use? Please include one of these account "
+                f"IDs in your request: {account_choices}. Nothing was executed."
+            ),
+            "pending_capability_id": selected_capability.capability_id,
+        }
+    if missing:
+        needed = ", ".join(name.replace("_", " ") for name in missing)
+        example = _customer_capability_prompt(
+            selected_capability.capability_id,
+            accounts,
+        )
+        return _clarification(
+            f"I can run this against the synthetic demo bank. Please include: "
+            f"{needed}. For example: ‘{example}’. Nothing was executed yet."
+        )
+
     return {
         "capability_id": selected_capability.capability_id,
         "input": supplied,
@@ -1430,7 +1559,11 @@ def api_chat():
     session.pop(_PENDING_CHAT_CAPABILITY_KEY, None)
     session.pop(_PENDING_CHAT_RUN_KEY, None)
 
-    if _public_demo_read_only() and _is_mutating(cap):
+    if (
+        _public_demo_read_only()
+        and _is_mutating(cap)
+        and not _synthetic_writes_enabled(system_key)
+    ):
         chat_state.status = "policy_blocked"
         chat_state.phase = "policy"
         chat_state.result = {"status": "policy_blocked"}
@@ -1501,6 +1634,7 @@ def dashboard():
     return render_template(
         "dashboard.html",
         public_demo_read_only=_public_demo_read_only(),
+        synthetic_writes_enabled=_synthetic_writes_enabled(),
         employee_id=employee_id,
         employee_role=KNOWN_EMPLOYEES.get(employee_id, {}).get("role") if employee_id else None,
     )
@@ -1544,6 +1678,7 @@ def customer_landing():
     return render_template(
         "customer_landing.html",
         public_demo_read_only=_public_demo_read_only(),
+        synthetic_writes_enabled=_synthetic_writes_enabled(),
         logged_in=current_customer_id() is not None,
     )
 
@@ -1603,7 +1738,10 @@ def customer_home():
     capability_options = [
         {
             "label": capability.name,
-            "prompt": _customer_capability_prompt(capability.capability_id),
+            "prompt": _customer_capability_prompt(
+                capability.capability_id,
+                list(_customer_profile(customer_id).get("accounts", [])),
+            ),
             "operation": "Employee approval" if _is_mutating(capability) else "Read-only",
         }
         for capability in capabilities
@@ -1612,6 +1750,7 @@ def customer_home():
         "customer_home.html",
         public_demo_read_only=_public_demo_read_only(),
         public_demo_synthetic=_public_demo_synthetic(),
+        synthetic_writes_enabled=_synthetic_writes_enabled(),
         member_id=customer_id,
         member_name=profile["member_name"],
         accounts=profile["accounts"],
@@ -1619,22 +1758,35 @@ def customer_home():
     )
 
 
-def _customer_capability_prompt(capability_id: str) -> str:
+def _customer_capability_prompt(
+    capability_id: str,
+    accounts: list[str] | None = None,
+) -> str:
     """Return customer language for an approved artifact without exposing IDs."""
+    account_ids = accounts or []
+    first_account = account_ids[0] if account_ids else "ACCOUNT-ID"
+    second_account = account_ids[1] if len(account_ids) > 1 else "SECOND-ACCOUNT-ID"
+    close_account = account_ids[-1] if account_ids else "ZERO-BALANCE-ACCOUNT-ID"
     prompts = {
-        "member_balance": "Check my balance",
+        "member_balance": f"Check the balance for account {first_account}",
         "member_inquiry": "What is my account name?",
-        "transaction_history": "Show my recent transactions",
-        "transfer_funds": "Transfer funds between my accounts",
-        "funds_transfer": "Transfer funds between my accounts",
-        "update_contact_info": "Update my contact information",
-        "update_member_info": "Update my contact information",
-        "lock_card": "Lock my card",
-        "close_account": "Close my account",
-        "loan_application": "Apply for a loan",
-        "bill_pay": "Pay a bill",
-        "place_hold": "Place a hold on my account",
-        "place_account_hold": "Place a hold on my account",
+        "transaction_history": f"Show recent transactions for account {first_account}",
+        "transfer_funds": f"Transfer $25 from {first_account} to {second_account}",
+        "funds_transfer": f"Transfer $25 from {first_account} to {second_account}",
+        "update_contact_info": (
+            "Update my phone to (313) 555-0199 and address to "
+            "200 Demo Way, Detroit, MI 48201"
+        ),
+        "update_member_info": (
+            "Update my phone to (313) 555-0199 and address to "
+            "200 Demo Way, Detroit, MI 48201"
+        ),
+        "lock_card": "Lock my card ending in 4242",
+        "close_account": f"Close account {close_account}",
+        "loan_application": "Apply for a Personal loan for $1000",
+        "bill_pay": f"Pay $15 from account {first_account} to payee PY1001",
+        "place_hold": f"Place a hold on account {first_account} for Suspected Fraud",
+        "place_account_hold": f"Place a hold on account {first_account} for Suspected Fraud",
         "open_new_share": "Open a new share account",
         "sign_on": "Sign on to MERIDIAN CORE",
     }

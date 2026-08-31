@@ -238,7 +238,10 @@ _PUBLIC_DEMO_MEMBERS = {
         accounts=[
             Account("100987-MMKT-11", "Money Market", "$8,420.17", "03/12/2018"),
             Account("100987-S0001-9", "Regular Savings", "$2,195.44", "03/12/2018"),
+            Account("100987-S0002-0", "Free Checking", "$0.00", "08/30/2026"),
         ],
+        cards=[Card("**** **** **** 4242", "Debit")],
+        payees=[Payee("City Utilities", "PY1001")],
     ),
     "100234": Member(
         member_no="100234",

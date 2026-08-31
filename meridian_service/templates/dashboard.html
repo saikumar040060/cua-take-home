@@ -200,7 +200,7 @@
 <header>
   <div class="brand"><div class="mark">M</div><span>MERIDIAN <span class="sub">Operations Console</span></span></div>
   <nav class="top" aria-label="Console navigation">
-    <span class="pill {{ 'pill-amber' if public_demo_read_only else 'pill-teal' }}">{{ 'READ-ONLY PUBLIC DEMO' if public_demo_read_only else 'PRIVATE SUBMISSION DEMO' }}</span>
+    <span class="pill {{ 'pill-amber' if public_demo_read_only else 'pill-teal' }}">{{ 'SAFE SYNTHETIC DEMO' if synthetic_writes_enabled else ('READ-ONLY PUBLIC DEMO' if public_demo_read_only else 'PRIVATE SUBMISSION DEMO') }}</span>
     {% if employee_id %}
       <span class="pill pill-teal">{{ employee_id }} · {{ employee_role }}</span>
       <a href="/employee/logout">Log out</a>
@@ -215,7 +215,7 @@
   <div class="page-head">
     <div>
       <h1>Automation operations</h1>
-      <p>Review interventions, capability health, and the complete execution trail across both backend systems.{% if public_demo_read_only %} Write actions and employee commands are disabled on this public instance.{% endif %}</p>
+      <p>Review interventions, capability health, and the complete execution trail across both backend systems.{% if synthetic_writes_enabled %} Approved writes run only against the supplied synthetic bank and require an employee decision.{% elif public_demo_read_only %} Write actions and employee commands are disabled on this public instance.{% endif %}</p>
     </div>
     <div class="freshness" id="freshness"><span class="dot" aria-hidden="true"></span><span id="freshnessText">Loading…</span><button id="refreshBtn" type="button">Refresh</button></div>
   </div>
@@ -309,6 +309,8 @@
 const $ = id => document.getElementById(id);
 const employeeLoggedIn = {{ 'true' if employee_id else 'false' }};
 const publicReadOnly = {{ 'true' if public_demo_read_only else 'false' }};
+const syntheticWritesEnabled = {{ 'true' if synthetic_writes_enabled else 'false' }};
+const employeeActionsEnabled = !publicReadOnly || syntheticWritesEnabled;
 
 let capsById = new Map();
 let capsList = [];
@@ -533,10 +535,10 @@ function renderInterventionQueue() {
     list.append(row);
   }
   root.append(list);
-  if (!employeeLoggedIn && !publicReadOnly) {
+  if (!employeeLoggedIn && employeeActionsEnabled) {
     root.append(el('div', { class: 'no-permission' }, 'Viewing read-only. ', el('a', { href: '/employee/login', text: 'Sign in as an employee' }), ' to approve, deny, resume, or abort.'));
   }
-  if (publicReadOnly) {
+  if (publicReadOnly && !syntheticWritesEnabled) {
     root.append(el('div', { class: 'no-permission' }, 'Employee actions are disabled on this public read-only instance.'));
   }
 }
@@ -644,7 +646,7 @@ function renderOverview(run) {
   );
   if (run.status === 'awaiting_human') {
     const wrap = el('div', { class: 'actions-row' });
-    if (employeeLoggedIn && !publicReadOnly) {
+    if (employeeLoggedIn && employeeActionsEnabled) {
       wrap.append(
         el('button', { class: 'btn approve', text: 'Approve', onclick: () => confirmCommand(run, 'approve') }),
         el('button', { class: 'btn deny', text: 'Deny', onclick: () => confirmCommand(run, 'deny') }),
@@ -652,7 +654,7 @@ function renderOverview(run) {
         el('button', { class: 'btn abort', text: 'Abort', onclick: () => confirmCommand(run, 'abort') }),
       );
     } else {
-      wrap.append(el('div', { class: 'no-permission' }, publicReadOnly ? 'Employee actions are disabled on this public instance.' : el('span', {}, el('a', { href: '/employee/login', text: 'Sign in as an employee' }), ' to act on this run.')));
+      wrap.append(el('div', { class: 'no-permission' }, !employeeActionsEnabled ? 'Employee actions are disabled on this public instance.' : el('span', {}, el('a', { href: '/employee/login', text: 'Sign in as an employee' }), ' to act on this run.')));
     }
     root.append(wrap);
   }

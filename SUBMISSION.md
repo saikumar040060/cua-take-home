@@ -41,7 +41,7 @@ employee console, and direct API.
 4. Explain that customer-visible schemas never include the legacy operator
    ID or password; credentials are injected by infrastructure after routing.
 5. Run a balance inquiry to show deterministic replay and structured output.
-6. In the private/local demo, request a transfer. Show that replay pauses
+6. Request a transfer against the bundled synthetic bank. Show that replay pauses
    only on the actual commit step; approving/denying it now requires the
    employee session from step 3, and the confirmation dialog names the
    capability and explains the impact before it can be approved.
@@ -94,8 +94,9 @@ what they demonstrate is the *authorization* property built on top: once
 a session is bound to a member, no code path lets that session's chat act
 on any other member's account; once a session is bound to an employee,
 anonymous visitors can view the console but cannot approve, deny, resume,
-or abort a run. `PUBLIC_DEMO_READ_ONLY=true` remains what protects any
-public deployment regardless of login state. Real bank OIDC/JWT,
+or abort a run. `PUBLIC_DEMO_READ_ONLY=true` blocks non-synthetic writes;
+the explicitly enabled public-demo exception targets only the co-located fake
+bank and still requires an employee decision. Real bank OIDC/JWT,
 per-employee RBAC (e.g. distinguishing what a teller vs. a supervisor may
 approve), and step-up MFA for sensitive actions remain future work.
 
@@ -108,4 +109,5 @@ pytest -q
 ```
 
 Then follow `DEPLOYMENT.md` for Docker and Render. Keep
-`PUBLIC_DEMO_READ_ONLY=true` on every public URL.
+`PUBLIC_DEMO_READ_ONLY=true` on every public URL and never configure real-bank
+credentials on a deployment that enables synthetic writes.

@@ -29,7 +29,7 @@ from __future__ import annotations
 import os
 import time
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, jsonify, redirect, render_template, request, session, url_for
 
 from mock_app.data import (
     MEMBERS,
@@ -51,6 +51,26 @@ app = Flask(__name__)
 app.secret_key = "mock-only-not-a-real-secret"
 
 DEFAULT_CHAOS = os.environ.get("MOCK_CHAOS", "none")
+
+
+@app.get("/internal/members/<member_no>/overview")
+def internal_member_overview(member_no: str):
+    """Loopback-only service view used by the co-located customer portal."""
+    member = MEMBERS.get(member_no)
+    if member is None:
+        return jsonify({"error": "member_not_found"}), 404
+    return jsonify({
+        "member_name": member.name,
+        "accounts": [
+            {
+                "share_id": account.number,
+                "balance": account.balance,
+                "status": account.status,
+                "ok": True,
+            }
+            for account in member.accounts
+        ],
+    })
 
 
 def chaos() -> str:

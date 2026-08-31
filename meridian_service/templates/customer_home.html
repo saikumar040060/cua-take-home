@@ -123,7 +123,7 @@
   <div class="welcome">
     <h1>Welcome back{% if member_name %}, {{ member_name.split(',')[-1].strip() if ',' in member_name else member_name }}{% endif %}</h1>
     <p>Member {{ member_id }} — everything below is your own account only.</p>
-    {% if public_demo_synthetic %}<div class="demo-note"><b>Safe public demo:</b> all names, accounts, balances, and transactions shown here are synthetic. Assistant read requests use the real recorded browser-automation pipeline; write actions stay disabled.</div>{% endif %}
+    {% if public_demo_synthetic %}<div class="demo-note"><b>Safe synthetic demo:</b> all names, accounts, balances, and transactions shown here are synthetic. Approved write requests run against the supplied demo bank and pause for employee approval before the final action.</div>{% endif %}
   </div>
 
   <div class="section-head"><h2>Bank accounts</h2><span>{% if public_demo_synthetic %}Synthetic demo balances{% else %}Live balances · ask the assistant about any other account by ID{% endif %}</span></div>
@@ -204,6 +204,7 @@ const thread = document.getElementById('thread');
 const input = document.getElementById('chatInput');
 const send = document.getElementById('sendBtn');
 const publicReadOnly = {{ 'true' if public_demo_read_only else 'false' }};
+const syntheticWritesEnabled = {{ 'true' if synthetic_writes_enabled else 'false' }};
 const primaryAccount = {{ (accounts[0].share_id if accounts else '') | tojson }};
 const capabilityOptions = {{ capability_options | tojson }};
 const CAPABILITY_PAGE_SIZE = 5;
@@ -289,7 +290,7 @@ function openWidget() {
     opened = true;
     addMessage(
       "Hi — I'm the MERIDIAN assistant. I can help with balances, transfers, new accounts, and updating your info. Sensitive actions pause for your confirmation or staff review." +
-      (publicReadOnly ? " (Public demo: write actions are disabled here.)" : ""),
+      (syntheticWritesEnabled ? " Write requests run only against synthetic demo data and pause for employee approval." : (publicReadOnly ? " (Public demo: write actions are disabled here.)" : "")),
       'bot'
     );
     addPills();

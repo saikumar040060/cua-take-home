@@ -11,11 +11,15 @@ services:
         value: claude-sonnet-4-5
       - key: LOG_LEVEL
         value: INFO
-      # Mandatory for this unauthenticated public submission surface. Never
-      # disable this with real credentials; use a private deployment instead.
+      # Mandatory on the public surface: all non-synthetic writes fail closed.
+      # Never configure real-bank credentials on this submission deployment.
       - key: PUBLIC_DEMO_READ_ONLY
         value: "true"
       # Runs the bundled synthetic legacy bank inside the same service, so
       # the public demo needs no private bank or LLM credentials to work.
       - key: PUBLIC_DEMO_SYNTHETIC
+        value: "true"
+      # Risky actions may execute only inside the co-located synthetic bank.
+      # The replay engine still pauses before commit for employee approval.
+      - key: PUBLIC_DEMO_ALLOW_SYNTHETIC_WRITES
         value: "true"

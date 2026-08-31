@@ -183,9 +183,10 @@ catalog cache, a rate limiter, router circuit breaker, secret binding, and
 idempotency support.
 
 Because the submission surfaces are not connected to a bank identity provider,
-the public deployment is forced into read-only mode. Write capabilities and
-employee commands return a fail-closed response. The full approval flow is for
-a private/local demonstration with synthetic data only.
+the public deployment fails closed for every non-synthetic target. The only
+write exception is the co-located fake bank: its recorded capabilities may run
+through the full employee approval flow so reviewers can see the real control
+transfer without reaching a real institution or real funds.
 
 Before a real-bank launch, process-local runs, rate limits, idempotency records,
 and console queues must move to durable/shared infrastructure. Authentication

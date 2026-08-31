@@ -123,6 +123,7 @@ def test_public_demo_home_uses_fast_synthetic_overview(monkeypatch):
     assert [account["balance"] for account in overview["accounts"]] == [
         "$8,420.17",
         "$2,195.44",
+        "$0.00",
     ]
     assert all(account["ok"] for account in overview["accounts"])
 
@@ -147,7 +148,8 @@ def test_public_demo_router_handles_safe_catalog_and_balance_requests():
     }
     catalog = _public_demo_route("Show available banking capabilities", "100987", profile)
     assert catalog["status"] == 200
-    assert "read-only" in catalog["reply"]
+    assert "safe synthetic demo" in catalog["reply"]
+    assert "employee approval" in catalog["reply"]
 
     balance = _public_demo_route(
         "Check the balance for account 100987-MMKT-11", "100987", profile
@@ -278,28 +280,95 @@ def test_public_demo_chat_uses_session_bound_synthetic_member(client, monkeypatc
     assert "$8,420.17" in response.get_json()["reply"]
 
 
-def test_public_demo_blocks_hold_before_requesting_account(client, monkeypatch):
+def test_public_demo_runs_complete_hold_request_until_employee_gate(client, monkeypatch):
     monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
     monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
 
-    def replay_must_not_start(*args, **kwargs):
-        raise AssertionError("public write request reached browser replay")
+    captured = {}
 
-    monkeypatch.setattr(service_app, "start_replay", replay_must_not_start)
+    def fake_start(system_key, capability, params, **kwargs):
+        captured.update(capability=capability.capability_id, params=params)
+        return SimpleNamespace(run_id="request-hold-review")
+
+    monkeypatch.setattr(service_app, "start_replay", fake_start)
+    monkeypatch.setattr(
+        service_app,
+        "_await_result",
+        lambda run_id: {
+            "status": "awaiting_human",
+            "run_id": run_id,
+            "intervention": {"reason": "risky_action_confirmation"},
+        },
+    )
     _login(client, "100987")
     response = client.post(
         "/api/chat",
-        json={"message": "Place a hold on my account"},
+        json={
+            "message": (
+                "Place a hold on account 100987-MMKT-11 for Suspected Fraud"
+            )
+        },
     )
     body = response.get_json()
-    assert response.status_code == 403
+    assert response.status_code == 200
     assert body["capability_id"] == "mock_place_hold"
-    assert "Writes are disabled" in body["reply"]
-    assert "Which account" not in body["reply"]
-    run = client.get("/api/runs").get_json()[0]
-    assert run["capability_id"] == "mock_place_hold"
-    assert run["status"] == "policy_blocked"
-    assert run["phase"] == "policy"
+    assert "waiting for an employee" in body["reply"]
+    assert "No write was committed yet" in body["reply"]
+    assert captured == {
+        "capability": "mock_place_hold",
+        "params": {
+            "account_no": "100987-MMKT-11",
+            "reason": "Suspected Fraud",
+            "member_id": "100987",
+        },
+    }
+
+
+def test_public_demo_transfer_collects_real_artifact_inputs(monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11", "100987-S0001-9"],
+    }
+    routed = _public_demo_route(
+        "Transfer $25 from 100987-MMKT-11 to 100987-S0001-9",
+        "100987",
+        profile,
+    )
+    assert routed["capability_id"] == "mock_transfer_funds"
+    assert routed["input"] == {
+        "from_account": "100987-MMKT-11",
+        "to_account": "100987-S0001-9",
+        "amount": "25",
+    }
+
+    clarification = _public_demo_route(
+        "Transfer funds between my accounts",
+        "100987",
+        profile,
+    )
+    assert clarification["clarification_required"] is True
+    assert "from account, to account, amount" in clarification["reply"]
+    assert "Transfer $25 from 100987-MMKT-11 to 100987-S0001-9" in clarification["reply"]
+
+
+def test_public_demo_close_account_routes_zero_balance_demo_account(monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    profile = {
+        "member_id": "100987",
+        "system": "mock_app",
+        "accounts": ["100987-MMKT-11", "100987-S0001-9", "100987-S0002-0"],
+    }
+    routed = _public_demo_route(
+        "Close account 100987-S0002-0",
+        "100987",
+        profile,
+    )
+    assert routed["capability_id"] == "mock_close_account"
+    assert routed["input"] == {"account_no": "100987-S0002-0"}
 
 
 def test_account_only_reply_continues_pending_balance_request(client, monkeypatch):
@@ -510,6 +579,31 @@ def test_run_command_allows_logged_in_employee_past_auth(client, monkeypatch):
     client.post("/employee/login", data={"employee_id": "super1", "password": "password"})
     response = client.post("/api/runs/some-run/command", json={"command": "approve"})
     assert response.status_code == 404
+
+
+def test_public_demo_employee_can_approve_synthetic_run(client, monkeypatch):
+    monkeypatch.setenv("PUBLIC_DEMO_READ_ONLY", "true")
+    monkeypatch.setenv("PUBLIC_DEMO_SYNTHETIC", "true")
+    state = service_app.RunState(
+        run_id="synthetic-write-review",
+        capability_id="mock_transfer_funds",
+        status="awaiting_human",
+    )
+    service_app.RUNS[state.run_id] = state
+    try:
+        client.post(
+            "/employee/login",
+            data={"employee_id": "super1", "password": "password"},
+        )
+        response = client.post(
+            f"/api/runs/{state.run_id}/command",
+            json={"command": "approve"},
+        )
+        assert response.status_code == 200
+        assert response.get_json() == {"queued": "approve"}
+        assert state.console_in.readline() == "approve\n"
+    finally:
+        service_app.RUNS.pop(state.run_id, None)
 
 
 def test_customer_login_preserves_employee_session(client):
